@@ -30,12 +30,8 @@ grid_order <- function(x, ...) {
 
 grid_data <- function(x, rows, cols, row_selector) {
     # If it's a 1D vector, turn it into a single-column 2D matrix, then process as such.
+    x <- as.data.frame(x)
     d <- dim(x);
-    if (is.null(d) || length(d) == 1) {
-        vp <- grid_data(matrix(x), rows, cols, row_selector)
-        vp$is_1d <- TRUE;
-        return(vp);
-    }
 
     if (missing(rows)) {
         rows <- 1:d[[1]];
@@ -44,6 +40,17 @@ grid_data <- function(x, rows, cols, row_selector) {
         cols <- 1:d[[2]];
     }
 
+    # Row names must be retrieved before slicing the data, because slicing can change the type -
+    # for example, a sliced timeseries is just a vector or matrix, and so time() no longer works.
+    rn <- row.names(x);
+
+    # Slice the row names to match the data.
+    if (!missing(row_selector)) {
+        rn <- rn[row_selector(x), drop = FALSE]
+    }
+    rn <- rn[rows, drop = FALSE]
+
+    # Slice the data.
     if (!missing(row_selector)) {
         x <- x[row_selector(x),, drop = FALSE]
     }
@@ -52,22 +59,64 @@ grid_data <- function(x, rows, cols, row_selector) {
     # Process and format values column by column, then flatten the resulting list of character vectors.
     max_length <- 100 - 3
     data <- c(lapply(1:ncol(x), function(i) {
-        lapply(format(x[, i], trim = TRUE, justify = "none"), function(s) {
+        col <- x[, i]
+
+        # Some 2D collections (e.g. tibble) produce 2D output when sliced by column. If that happens,
+        # use as.matrix to coerce it to a vector or list. Note: cannot use as.list, because that will
+        # just produce a list of 1 element, which is the column itself.
+        if (length(dim(col)) > 1) {
+            col <- as.matrix(col)
+            dim(col) <- NULL;
+        }
+
+        if (is.atomic(col)) {
+            # For atomic vectors, we want to apply format() to the whole thing at once,
+            # so that it can determine the number of decimal places accordingly - e.g.
+            # for c(1.5, 2, 3.04), we want the output to be "1.50 2.00 3.04".
+            col <- format(col, trim = TRUE, justify = "none")
+        }
+
+        lapply(col, function(s) {
+            # If it's already a string, use as is (this also will be the case if format was already applied above).
+            # If it's something else, try format() on this individual value.
+            # If that fails (e.g. for externalptr), try str().
+            # If that also fails, give up and display the value as <?>.
+            if (!is.character(s) || length(s) != 1) {
+                s <- tryCatch({
+                    # Preserve the behavior of format() for list elements, documented as follows:
+                    # If x is a list, the result is a character vector obtained by applying format.default(x, ...)
+                    # to each element of the list (after unlisting elements which are themselves lists), and then
+                    # collapsing the result for each element with paste(collapse = ", ").
+                    paste(format.default(unlist(s), trim = TRUE, justify = "none"), collapse = ', ')
+                }, error = function(e) {
+                    tryCatch({
+                        make_repr_str(max_length = 100)(s) 
+                    }, error = function(e) {
+                        "<?>"
+                    })
+                })
+            }
+
             if (is.na(s)) { 'NA' }
             else if (nchar(s) <= max_length) { s }
             else { paste0(substr(s, 1, max_length), '...', collapse = '') }
         })
     }), recursive = TRUE)
-
+    
     # Any names in the original data will flow through, but we don't want them.
     names(data) <- NULL;
 
-    rn <- row.names(x);
     cn <- colnames(x);
 
     # Format row names
     x.rownames <- NULL;
     if (length(rn) > 0) {
+        if (is.numeric(rn)) {
+            # For numeric vectors, we want to apply format() to the whole thing at once,
+            # so that it can determine the number of decimal places accordingly - e.g.
+            # for c(1.5, 2, 3.04), we want the output to be "1.50 2.00 3.04".
+            rn <- lapply(format(rn, trim = TRUE, justify = "none"), function(s) if(s=="NA") NULL else s)
+        }
         x.rownames <- sapply(rn, grid_header_format, USE.NAMES = FALSE);
     }
 

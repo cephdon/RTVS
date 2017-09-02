@@ -19,7 +19,7 @@ namespace Microsoft.VisualStudio.R.Package {
     // class via a tool like ResGen or Visual Studio.
     // To add or remove a member, edit your .ResX file then rerun ResGen
     // with the /str option, or rebuild your VS project.
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "4.0.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "15.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     public class Resources {
@@ -115,6 +115,24 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Below.
+        /// </summary>
+        public static string Below {
+            get {
+                return ResourceManager.GetString("Below", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Browse.
+        /// </summary>
+        public static string Browse {
+            get {
+                return ResourceManager.GetString("Browse", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to External.
         /// </summary>
         public static string BrowserType_External {
@@ -129,6 +147,24 @@ namespace Microsoft.VisualStudio.R.Package {
         public static string BrowserType_Internal {
             get {
                 return ResourceManager.GetString("BrowserType_Internal", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Maintain Aspect Ratio.
+        /// </summary>
+        public static string CheckBox_AspectRatio {
+            get {
+                return ResourceManager.GetString("CheckBox_AspectRatio", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to View plot after saving.
+        /// </summary>
+        public static string CheckBox_ViewPlot {
+            get {
+                return ResourceManager.GetString("CheckBox_ViewPlot", resourceCulture);
             }
         }
         
@@ -174,6 +210,15 @@ namespace Microsoft.VisualStudio.R.Package {
         public static string CollectingSystemEvents {
             get {
                 return ResourceManager.GetString("CollectingSystemEvents", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Custom.
+        /// </summary>
+        public static string Combobox_Custom {
+            get {
+                return ResourceManager.GetString("Combobox_Custom", resourceCulture);
             }
         }
         
@@ -286,15 +331,6 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to .
-        /// </summary>
-        public static string Error_CannotAccess {
-            get {
-                return ResourceManager.GetString("Error_CannotAccess", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Unable to collect and package logs. Exception: {0}.
         /// </summary>
         public static string Error_CannotCollectLogs {
@@ -309,6 +345,15 @@ namespace Microsoft.VisualStudio.R.Package {
         public static string Error_CannotDeleteFile {
             get {
                 return ResourceManager.GetString("Error_CannotDeleteFile", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This object cannot be exported to CSV for viewing in Excel.
+        /// </summary>
+        public static string Error_CannotExportToCsv {
+            get {
+                return ResourceManager.GetString("Error_CannotExportToCsv", resourceCulture);
             }
         }
         
@@ -385,34 +430,6 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to This operation requires package {0} which is not installed or has been removed. .
-        /// </summary>
-        public static string Error_PackageMissing {
-            get {
-                return ResourceManager.GetString("Error_PackageMissing", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Publishing markdown requires Pandoc. Please install Pandoc for Windows from http://pandoc.org/installing.html. Click OK to open the Pandoc download page in default browser. You may need to restart Visual Studio when the Pandoc setup completes..
-        /// </summary>
-        public static string Error_PandocMissing {
-            get {
-                return ResourceManager.GetString("Error_PandocMissing", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Publishing markdown to PDF requires TeX installation. Please install MiKTeX (Complete) - http://miktex.org/2.9/setup. Be sure to download the Complete installation. Click OK to open MiKTeX download page in the default browser. You may need to restart Visual Studio when the MiKTeX setup completes.
-        ///.
-        /// </summary>
-        public static string Error_PdfLatexMissing {
-            get {
-                return ResourceManager.GetString("Error_PdfLatexMissing", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Cannot delete variable(s). Exception {0}.
         /// </summary>
         public static string Error_UnableToDeleteVariable {
@@ -481,6 +498,24 @@ namespace Microsoft.VisualStudio.R.Package {
         public static string Error_UnknownMirror {
             get {
                 return ResourceManager.GetString("Error_UnknownMirror", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Export Image.
+        /// </summary>
+        public static string ExportImageDialog_Title {
+            get {
+                return ResourceManager.GetString("ExportImageDialog_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Export PDF.
+        /// </summary>
+        public static string ExportPDFDialog_Title {
+            get {
+                return ResourceManager.GetString("ExportPDFDialog_Title", resourceCulture);
             }
         }
         
@@ -692,7 +727,7 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Compressing: {0}.
+        ///   Looks up a localized string similar to Compressing: {0} {1} Bytes.
         /// </summary>
         public static string Info_CompressingFile {
             get {
@@ -710,11 +745,20 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Extracting file on remote RHost..
+        ///   Looks up a localized string similar to Extracting file on remote machine..
         /// </summary>
         public static string Info_ExtractingFilesInRHost {
             get {
                 return ResourceManager.GetString("Info_ExtractingFilesInRHost", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to File transfer was canceled..
+        /// </summary>
+        public static string Info_FileTransferCanceled {
+            get {
+                return ResourceManager.GetString("Info_FileTransferCanceled", resourceCulture);
             }
         }
         
@@ -773,7 +817,7 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Transferring files to remote RHost..
+        ///   Looks up a localized string similar to Transferring files to remote machine..
         /// </summary>
         public static string Info_TransferringFiles {
             get {
@@ -782,11 +826,20 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Transferring files to remote RHost... completed..
+        ///   Looks up a localized string similar to Transferring files to remote machine... completed..
         /// </summary>
         public static string Info_TransferringFilesDone {
             get {
                 return ResourceManager.GetString("Info_TransferringFilesDone", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Transferring Compressed file: {0} Bytes / {1} Bytes.
+        /// </summary>
+        public static string Info_TransferringFilesWithSize {
+            get {
+                return ResourceManager.GetString("Info_TransferringFilesWithSize", resourceCulture);
             }
         }
         
@@ -805,6 +858,150 @@ namespace Microsoft.VisualStudio.R.Package {
         public static string InsertSnippet {
             get {
                 return ResourceManager.GetString("InsertSnippet", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Comment:.
+        /// </summary>
+        public static string Label_Comment {
+            get {
+                return ResourceManager.GetString("Label_Comment", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Decimal:.
+        /// </summary>
+        public static string Label_Decimal {
+            get {
+                return ResourceManager.GetString("Label_Decimal", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Encoding:.
+        /// </summary>
+        public static string Label_Encoding {
+            get {
+                return ResourceManager.GetString("Label_Encoding", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Header:.
+        /// </summary>
+        public static string Label_Header {
+            get {
+                return ResourceManager.GetString("Label_Header", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Height:.
+        /// </summary>
+        public static string label_Height {
+            get {
+                return ResourceManager.GetString("label_Height", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to inches.
+        /// </summary>
+        public static string Label_Inches {
+            get {
+                return ResourceManager.GetString("Label_Inches", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Name:.
+        /// </summary>
+        public static string Label_Name {
+            get {
+                return ResourceManager.GetString("Label_Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Options.
+        /// </summary>
+        public static string Label_Options {
+            get {
+                return ResourceManager.GetString("Label_Options", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Orientation:.
+        /// </summary>
+        public static string Label_Orientation {
+            get {
+                return ResourceManager.GetString("Label_Orientation", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to PDF Size:.
+        /// </summary>
+        public static string Label_PdfSize {
+            get {
+                return ResourceManager.GetString("Label_PdfSize", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Quote:.
+        /// </summary>
+        public static string Label_Quote {
+            get {
+                return ResourceManager.GetString("Label_Quote", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Row names:.
+        /// </summary>
+        public static string Label_RowNames {
+            get {
+                return ResourceManager.GetString("Label_RowNames", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Separator:.
+        /// </summary>
+        public static string Label_Separator {
+            get {
+                return ResourceManager.GetString("Label_Separator", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to URL:.
+        /// </summary>
+        public static string Label_URL {
+            get {
+                return ResourceManager.GetString("Label_URL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Width:.
+        /// </summary>
+        public static string label_Width {
+            get {
+                return ResourceManager.GetString("label_Width", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to x.
+        /// </summary>
+        public static string Label_X {
+            get {
+                return ResourceManager.GetString("Label_X", resourceCulture);
             }
         }
         
@@ -1008,6 +1205,24 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Open {0} variable in Microsoft Excel or another app registered for CSV files.
+        /// </summary>
+        public static string OpenCsvAppCommandAutomationHelpText {
+            get {
+                return ResourceManager.GetString("OpenCsvAppCommandAutomationHelpText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Export {0} variable into CSV.
+        /// </summary>
+        public static string OpenCsvAppCommandAutomationName {
+            get {
+                return ResourceManager.GetString("OpenCsvAppCommandAutomationName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Open in Microsoft Excel or another app registered for CSV files.
         /// </summary>
         public static string OpenCsvAppCommandTooltip {
@@ -1071,6 +1286,16 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        public static System.Drawing.Bitmap pdf {
+            get {
+                object obj = ResourceManager.GetObject("pdf", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Microsoft R Client setup is about to start. Please close Visual Studio now and reopen it when setup is complete..
         /// </summary>
         public static string PleaseRestartVisualStudioAfterRClientSetup {
@@ -1094,6 +1319,43 @@ namespace Microsoft.VisualStudio.R.Package {
         public static string PlotWindowCaption {
             get {
                 return ResourceManager.GetString("PlotWindowCaption", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to R Plot - Device {0}.
+        /// </summary>
+        public static string PlotWindowCommand {
+            get {
+                return ResourceManager.GetString("PlotWindowCommand", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to R Plot - Device {0} - Active.
+        /// </summary>
+        public static string PlotWindowCommandActive {
+            get {
+                return ResourceManager.GetString("PlotWindowCommandActive", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to R Plot.
+        /// </summary>
+        public static string PlotWindowCommandNoDevice {
+            get {
+                return ResourceManager.GetString("PlotWindowCommandNoDevice", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        public static System.Drawing.Bitmap ProcedureFileNode {
+            get {
+                object obj = ResourceManager.GetObject("ProcedureFileNode", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
             }
         }
         
@@ -1145,9 +1407,19 @@ namespace Microsoft.VisualStudio.R.Package {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        public static System.Drawing.Bitmap RDataNode {
+        public static System.Drawing.Bitmap RDataFileNode {
             get {
-                object obj = ResourceManager.GetObject("RDataNode", resourceCulture);
+                object obj = ResourceManager.GetObject("RDataFileNode", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        public static System.Drawing.Bitmap RdFileNode {
+            get {
+                object obj = ResourceManager.GetObject("RdFileNode", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -1192,6 +1464,25 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Right.
+        /// </summary>
+        public static string Right {
+            get {
+                return ResourceManager.GetString("Right", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        public static System.Drawing.Bitmap RMdFileNode {
+            get {
+                object obj = ResourceManager.GetObject("RMdFileNode", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
         public static System.Drawing.Bitmap RProjectNode {
@@ -1207,6 +1498,51 @@ namespace Microsoft.VisualStudio.R.Package {
         public static string RPromptClassification {
             get {
                 return ResourceManager.GetString("RPromptClassification", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remote Project Path.
+        /// </summary>
+        public static string RunPropertyPage_RemoteProjectPath {
+            get {
+                return ResourceManager.GetString("RunPropertyPage_RemoteProjectPath", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to _Reset R Interactive on run.
+        /// </summary>
+        public static string RunPropertyPage_ResetReplOnRun {
+            get {
+                return ResourceManager.GetString("RunPropertyPage_ResetReplOnRun", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Startup file.
+        /// </summary>
+        public static string RunPropertyPage_StartupFile {
+            get {
+                return ResourceManager.GetString("RunPropertyPage_StartupFile", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Files to transfer.
+        /// </summary>
+        public static string RunPropertyPage_TransferFilesFilter {
+            get {
+                return ResourceManager.GetString("RunPropertyPage_TransferFilesFilter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to _Transfer files on run.
+        /// </summary>
+        public static string RunPropertyPage_TransferFilesOnRun {
+            get {
+                return ResourceManager.GetString("RunPropertyPage_TransferFilesOnRun", resourceCulture);
             }
         }
         
@@ -1299,6 +1635,24 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Code outlining.
+        /// </summary>
+        public static string Setting_EnableOutlining {
+            get {
+                return ResourceManager.GetString("Setting_EnableOutlining", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Outline code regions (collapsible sections).
+        /// </summary>
+        public static string Setting_EnableOutlining_Description {
+            get {
+                return ResourceManager.GetString("Setting_EnableOutlining_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Always save history.
         /// </summary>
         public static string Settings_AlwaysSaveHistory {
@@ -1349,6 +1703,24 @@ namespace Microsoft.VisualStudio.R.Package {
         public static string Settings_BracesExpanded_Description {
             get {
                 return ResourceManager.GetString("Settings_BracesExpanded_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Statements on separate lines.
+        /// </summary>
+        public static string Settings_BreakMultipleStatements {
+            get {
+                return ResourceManager.GetString("Settings_BreakMultipleStatements", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to When there multiple statements on the same line, break them into separate lines..
+        /// </summary>
+        public static string Settings_BreakMultipleStatements_Description {
+            get {
+                return ResourceManager.GetString("Settings_BreakMultipleStatements_Description", resourceCulture);
             }
         }
         
@@ -1542,6 +1914,33 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Dynamic evaluation.
+        /// </summary>
+        public static string Settings_GridView_DynamicEvaluation {
+            get {
+                return ResourceManager.GetString("Settings_GridView_DynamicEvaluation", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to By default View(x) takes snapshot of data as a data frame. This may consume subtantial amount of memory with large data sets. With dynamic evaluation the expression is evaluated every time grid refreshes in order to only fetch part of the data for display. However, if the variable changes the data in the grid will also change. This mode may be unsuitable for dplyr pipe expressions..
+        /// </summary>
+        public static string Settings_GridView_DynamicEvaluation_Description {
+            get {
+                return ResourceManager.GetString("Settings_GridView_DynamicEvaluation_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Grid view.
+        /// </summary>
+        public static string Settings_GridViewCategory {
+            get {
+                return ResourceManager.GetString("Settings_GridViewCategory", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to R Help Browser.
         /// </summary>
         public static string Settings_HelpBrowser {
@@ -1614,6 +2013,519 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Enforce &lt;-.
+        /// </summary>
+        public static string Settings_Lint_AssignmentType {
+            get {
+                return ResourceManager.GetString("Settings_Lint_AssignmentType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Check that ’&lt;-’ is always used for assignment.
+        /// </summary>
+        public static string Settings_Lint_AssignmentType_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_AssignmentType_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Flag camelCase.
+        /// </summary>
+        public static string Settings_Lint_CamelCase {
+            get {
+                return ResourceManager.GetString("Settings_Lint_CamelCase", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Flag object names in camelCase.
+        /// </summary>
+        public static string Settings_Lint_CamelCase_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_CamelCase_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Closing curly position.
+        /// </summary>
+        public static string Settings_Lint_CloseCurlySeparateLine {
+            get {
+                return ResourceManager.GetString("Settings_Lint_CloseCurlySeparateLine", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Check that closing curly braces are always on their own line unless followed by an &apos;else&apos; statement, comma or closing brace. .
+        /// </summary>
+        public static string Settings_Lint_CloseCurlySeparateLine_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_CloseCurlySeparateLine_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enforce double quotes.
+        /// </summary>
+        public static string Settings_Lint_DoubleQuotes {
+            get {
+                return ResourceManager.GetString("Settings_Lint_DoubleQuotes", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Verify that strings are enclosed only in double quotes..
+        /// </summary>
+        public static string Settings_Lint_DoubleQuotes_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_DoubleQuotes_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Line length limit.
+        /// </summary>
+        public static string Settings_Lint_LineLength {
+            get {
+                return ResourceManager.GetString("Settings_Lint_LineLength", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Flag lines longer than the specified limit.
+        /// </summary>
+        public static string Settings_Lint_LineLength_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_LineLength_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Max line length.
+        /// </summary>
+        public static string Settings_Lint_MaxLineLength {
+            get {
+                return ResourceManager.GetString("Settings_Lint_MaxLineLength", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Maximum permitted line length.
+        /// </summary>
+        public static string Settings_Lint_MaxLineLength_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_MaxLineLength_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Max name length.
+        /// </summary>
+        public static string Settings_Lint_MaxNameLength {
+            get {
+                return ResourceManager.GetString("Settings_Lint_MaxNameLength", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Max variable or object name length.
+        /// </summary>
+        public static string Settings_Lint_MaxNameLength_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_MaxNameLength_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Flas multiple dots.
+        /// </summary>
+        public static string Settings_Lint_MultipleDots {
+            get {
+                return ResourceManager.GetString("Settings_Lint_MultipleDots", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Flag objects names with multiple dots.
+        /// </summary>
+        public static string Settings_Lint_MultipleDots_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_MultipleDots_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Multiple.
+        /// </summary>
+        public static string Settings_Lint_MultipleStatements {
+            get {
+                return ResourceManager.GetString("Settings_Lint_MultipleStatements", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Verify that there are no multiple statements in the same line.
+        /// </summary>
+        public static string Settings_Lint_MultipleStatements_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_MultipleStatements_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Flag long names.
+        /// </summary>
+        public static string Settings_Lint_NameLength {
+            get {
+                return ResourceManager.GetString("Settings_Lint_NameLength", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Flag names longer than the specified limit.
+        /// </summary>
+        public static string Settings_Lint_NameLength_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_NameLength_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to After function name.
+        /// </summary>
+        public static string Settings_Lint_NoSpaceAfterFunctionName {
+            get {
+                return ResourceManager.GetString("Settings_Lint_NoSpaceAfterFunctionName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Verify that there is no space after the function name..
+        /// </summary>
+        public static string Settings_Lint_NoSpaceAfterFunctionName_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_NoSpaceAfterFunctionName_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Disallow tabs.
+        /// </summary>
+        public static string Settings_Lint_NoTabs {
+            get {
+                return ResourceManager.GetString("Settings_Lint_NoTabs", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Verify there are no tabs in the file.
+        /// </summary>
+        public static string Settings_Lint_NoTabs_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_NoTabs_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Opening curly position.
+        /// </summary>
+        public static string Settings_Lint_OpenCurlyPosition {
+            get {
+                return ResourceManager.GetString("Settings_Lint_OpenCurlyPosition", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Check that open curly brace is not on its own line and is followed by a new line..
+        /// </summary>
+        public static string Settings_Lint_OpenCurlyPosition_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_OpenCurlyPosition_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Flag PascalCase.
+        /// </summary>
+        public static string Settings_Lint_PascalCase {
+            get {
+                return ResourceManager.GetString("Settings_Lint_PascalCase", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Flag object names in PascalCase.
+        /// </summary>
+        public static string Settings_Lint_PascalCase_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_PascalCase_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Semicolons.
+        /// </summary>
+        public static string Settings_Lint_Semicolons {
+            get {
+                return ResourceManager.GetString("Settings_Lint_Semicolons", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Flag semicolons in the file..
+        /// </summary>
+        public static string Settings_Lint_Semicolons_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_Semicolons_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Flag snake_case.
+        /// </summary>
+        public static string Settings_Lint_SnakeCase {
+            get {
+                return ResourceManager.GetString("Settings_Lint_SnakeCase", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Flag object names in snake_case.
+        /// </summary>
+        public static string Settings_Lint_SnakeCase_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_SnakeCase_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Space before (.
+        /// </summary>
+        public static string Settings_Lint_SpaceBeforeOpenBrace {
+            get {
+                return ResourceManager.GetString("Settings_Lint_SpaceBeforeOpenBrace", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Check that left brace has a space before it unless it is a function call..
+        /// </summary>
+        public static string Settings_Lint_SpaceBeforeOpenBrace_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_SpaceBeforeOpenBrace_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Around comma.
+        /// </summary>
+        public static string Settings_Lint_SpacesAroundComma {
+            get {
+                return ResourceManager.GetString("Settings_Lint_SpacesAroundComma", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Checks that commas have space after and no space before them unless followed by another comma or by a closing brace.
+        /// </summary>
+        public static string Settings_Lint_SpacesAroundComma_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_SpacesAroundComma_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Around operators.
+        /// </summary>
+        public static string Settings_Lint_SpacesAroundOperators {
+            get {
+                return ResourceManager.GetString("Settings_Lint_SpacesAroundOperators", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Checks that infix operators are surrounded by spaces.
+        /// </summary>
+        public static string Settings_Lint_SpacesAroundOperators_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_SpacesAroundOperators_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Spaces inside ( ).
+        /// </summary>
+        public static string Settings_Lint_SpacesInsideParenthesis {
+            get {
+                return ResourceManager.GetString("Settings_Lint_SpacesInsideParenthesis", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to There should be no space after (, [ or [[ and no space before ), ] or ]] unless ] or ]] is preceded by a comma as in x[1, ].
+        /// </summary>
+        public static string Settings_Lint_SpacesInsideParenthesis_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_SpacesInsideParenthesis_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Trailing empty lines.
+        /// </summary>
+        public static string Settings_Lint_TrailingBlankLines {
+            get {
+                return ResourceManager.GetString("Settings_Lint_TrailingBlankLines", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Verify there is no trailing blank lines in the file..
+        /// </summary>
+        public static string Settings_Lint_TrailingBlankLines_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_TrailingBlankLines_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Trailing whitespace.
+        /// </summary>
+        public static string Settings_Lint_TrailingWhitespace {
+            get {
+                return ResourceManager.GetString("Settings_Lint_TrailingWhitespace", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Check there is no trailing whitespace in lines..
+        /// </summary>
+        public static string Settings_Lint_TrailingWhitespace_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_TrailingWhitespace_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Flag UPPERCASE.
+        /// </summary>
+        public static string Settings_Lint_UpperCase {
+            get {
+                return ResourceManager.GetString("Settings_Lint_UpperCase", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Flag object names in UPPERCASE.
+        /// </summary>
+        public static string Settings_Lint_UpperCase_Description {
+            get {
+                return ResourceManager.GetString("Settings_Lint_UpperCase_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to All.
+        /// </summary>
+        public static string Settings_LintCategory_All {
+            get {
+                return ResourceManager.GetString("Settings_LintCategory_All", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Assignment.
+        /// </summary>
+        public static string Settings_LintCategory_Assignment {
+            get {
+                return ResourceManager.GetString("Settings_LintCategory_Assignment", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Naming.
+        /// </summary>
+        public static string Settings_LintCategory_Naming {
+            get {
+                return ResourceManager.GetString("Settings_LintCategory_Naming", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Operators.
+        /// </summary>
+        public static string Settings_LintCategory_Operators {
+            get {
+                return ResourceManager.GetString("Settings_LintCategory_Operators", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Quotes.
+        /// </summary>
+        public static string Settings_LintCategory_Quotes {
+            get {
+                return ResourceManager.GetString("Settings_LintCategory_Quotes", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Spacing.
+        /// </summary>
+        public static string Settings_LintCategory_Spacing {
+            get {
+                return ResourceManager.GetString("Settings_LintCategory_Spacing", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Statements.
+        /// </summary>
+        public static string Settings_LintCategory_Statements {
+            get {
+                return ResourceManager.GetString("Settings_LintCategory_Statements", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Text.
+        /// </summary>
+        public static string Settings_LintCategory_Text {
+            get {
+                return ResourceManager.GetString("Settings_LintCategory_Text", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Whitespace.
+        /// </summary>
+        public static string Settings_LintCategory_Whitespace {
+            get {
+                return ResourceManager.GetString("Settings_LintCategory_Whitespace", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enable lint.
+        /// </summary>
+        public static string Settings_LintEnabled {
+            get {
+                return ResourceManager.GetString("Settings_LintEnabled", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enable or disable coding style checks similar to lintr package..
+        /// </summary>
+        public static string Settings_LintEnabled_Description {
+            get {
+                return ResourceManager.GetString("Settings_LintEnabled_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Load workspace when project opens.
         /// </summary>
         public static string Settings_LoadRDataOnProjectLoad {
@@ -1659,6 +2571,96 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Automatic update.
+        /// </summary>
+        public static string Settings_Markdown_AutomaticSync {
+            get {
+                return ResourceManager.GetString("Settings_Markdown_AutomaticSync", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Automatically update preview when markdown file changes.
+        /// </summary>
+        public static string Settings_Markdown_AutomaticSync_Description {
+            get {
+                return ResourceManager.GetString("Settings_Markdown_AutomaticSync_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enable preview.
+        /// </summary>
+        public static string Settings_Markdown_EnablePreview {
+            get {
+                return ResourceManager.GetString("Settings_Markdown_EnablePreview", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enables or disables preview of resulting HTML in a browser pane.
+        /// </summary>
+        public static string Settings_Markdown_EnablePreview_Description {
+            get {
+                return ResourceManager.GetString("Settings_Markdown_EnablePreview_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Position.
+        /// </summary>
+        public static string Settings_Markdown_PreviewPosition {
+            get {
+                return ResourceManager.GetString("Settings_Markdown_PreviewPosition", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Defines where HTML preview pane appears.
+        /// </summary>
+        public static string Settings_Markdown_PreviewPosition_Description {
+            get {
+                return ResourceManager.GetString("Settings_Markdown_PreviewPosition_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Scroll editor with preview.
+        /// </summary>
+        public static string Settings_Markdown_ScrollEditorWithPreview {
+            get {
+                return ResourceManager.GetString("Settings_Markdown_ScrollEditorWithPreview", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to When preview pane scrolls the editor scrolls text pane to match the preview pane scroll position..
+        /// </summary>
+        public static string Settings_Markdown_ScrollEditorWithPreview_Description {
+            get {
+                return ResourceManager.GetString("Settings_Markdown_ScrollEditorWithPreview_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Scroll preview with editor.
+        /// </summary>
+        public static string Settings_Markdown_ScrollPreviewWithEditor {
+            get {
+                return ResourceManager.GetString("Settings_Markdown_ScrollPreviewWithEditor", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to When caret moves in the text pane the editor scrolls preview pane to make sure current text line is visible..
+        /// </summary>
+        public static string Settings_Markdown_ScrollPreviewWithEditor_Description {
+            get {
+                return ResourceManager.GetString("Settings_Markdown_ScrollPreviewWithEditor_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Markdown preview browser.
         /// </summary>
         public static string Settings_MarkdownBrowserType {
@@ -1682,6 +2684,24 @@ namespace Microsoft.VisualStudio.R.Package {
         public static string Settings_MarkdownCategory {
             get {
                 return ResourceManager.GetString("Settings_MarkdownCategory", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Preview.
+        /// </summary>
+        public static string Settings_MarkdownCategory_Preview {
+            get {
+                return ResourceManager.GetString("Settings_MarkdownCategory_Preview", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Scrolling.
+        /// </summary>
+        public static string Settings_MarkdownCategory_Scroll {
+            get {
+                return ResourceManager.GetString("Settings_MarkdownCategory_Scroll", resourceCulture);
             }
         }
         
@@ -1713,6 +2733,15 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Outlining.
+        /// </summary>
+        public static string Settings_OutliningCategory {
+            get {
+                return ResourceManager.GetString("Settings_OutliningCategory", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Match partially typed argument names.
         /// </summary>
         public static string Settings_PartialArgumentNameMatch {
@@ -1727,24 +2756,6 @@ namespace Microsoft.VisualStudio.R.Package {
         public static string Settings_PartialArgumentNameMatch_Description {
             get {
                 return ResourceManager.GetString("Settings_PartialArgumentNameMatch_Description", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to R Engine (64-bit).
-        /// </summary>
-        public static string Settings_RBasePath {
-            get {
-                return ResourceManager.GetString("Settings_RBasePath", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Path to R installation (64-bit only)..
-        /// </summary>
-        public static string Settings_RBasePath_Description {
-            get {
-                return ResourceManager.GetString("Settings_RBasePath_Description", resourceCulture);
             }
         }
         
@@ -1776,7 +2787,7 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Additional arguments to pass to the R Host process.
+        ///   Looks up a localized string similar to Additional arguments to pass to the R session.
         /// </summary>
         public static string Settings_RCommandLineArguments_Description {
             get {
@@ -1839,6 +2850,15 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to In smart indent mode align caret by the first function argument.
+        /// </summary>
+        public static string Settings_Settings_SmartIndentByArgument_Description {
+            get {
+                return ResourceManager.GetString("Settings_Settings_SmartIndentByArgument_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Show dot-prefixed variables.
         /// </summary>
         public static string Settings_ShowDotPrefixedVariables {
@@ -1853,6 +2873,24 @@ namespace Microsoft.VisualStudio.R.Package {
         public static string Settings_ShowDotPrefixedVariables_Description {
             get {
                 return ResourceManager.GetString("Settings_ShowDotPrefixedVariables_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show machine load indicator.
+        /// </summary>
+        public static string Settings_ShowHostLoadMeter {
+            get {
+                return ResourceManager.GetString("Settings_ShowHostLoadMeter", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Controls visibility of the CPU/Memory/Network load indicator in the status bar. The indicator incurs network traffic and can be swiitched off in remote metered scenarios. Requires restart of the Visual Studio..
+        /// </summary>
+        public static string Settings_ShowHostLoadMeter_Description {
+            get {
+                return ResourceManager.GetString("Settings_ShowHostLoadMeter_Description", resourceCulture);
             }
         }
         
@@ -1875,6 +2913,24 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Prompt to save workspace on reset.
+        /// </summary>
+        public static string Settings_ShowSaveOnResetConfirmationDialog {
+            get {
+                return ResourceManager.GetString("Settings_ShowSaveOnResetConfirmationDialog", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show prompt to save workspace when resetting interactive session.
+        /// </summary>
+        public static string Settings_ShowSaveOnResetConfirmationDialog_Description {
+            get {
+                return ResourceManager.GetString("Settings_ShowSaveOnResetConfirmationDialog_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Show TCL functions.
         /// </summary>
         public static string Settings_ShowTclFunctions {
@@ -1889,6 +2945,42 @@ namespace Microsoft.VisualStudio.R.Package {
         public static string Settings_ShowTclFunctions_Description {
             get {
                 return ResourceManager.GetString("Settings_ShowTclFunctions_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show confirmation dialog before switching workspaces.
+        /// </summary>
+        public static string Settings_ShowWorkspaceSwitchConfirmationDialog {
+            get {
+                return ResourceManager.GetString("Settings_ShowWorkspaceSwitchConfirmationDialog", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show confirmation dialog before switching workspaces.
+        /// </summary>
+        public static string Settings_ShowWorkspaceSwitchConfirmationDialog_Description {
+            get {
+                return ResourceManager.GetString("Settings_ShowWorkspaceSwitchConfirmationDialog_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to By function argument.
+        /// </summary>
+        public static string Settings_SmartIndentByArgument {
+            get {
+                return ResourceManager.GetString("Settings_SmartIndentByArgument", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Smart indent.
+        /// </summary>
+        public static string Settings_SmartIndentCategory {
+            get {
+                return ResourceManager.GetString("Settings_SmartIndentCategory", resourceCulture);
             }
         }
         
@@ -1925,6 +3017,42 @@ namespace Microsoft.VisualStudio.R.Package {
         public static string Settings_SpaceAfterKeyword_Description {
             get {
                 return ResourceManager.GetString("Settings_SpaceAfterKeyword_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Space before {.
+        /// </summary>
+        public static string Settings_SpaceBeforeCurly {
+            get {
+                return ResourceManager.GetString("Settings_SpaceBeforeCurly", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Determines if formatter should be adding space before opening curly brace.
+        /// </summary>
+        public static string Settings_SpaceBeforeCurly_Description {
+            get {
+                return ResourceManager.GetString("Settings_SpaceBeforeCurly_Description", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Spaces around =.
+        /// </summary>
+        public static string Settings_SpacesAroundEquals {
+            get {
+                return ResourceManager.GetString("Settings_SpacesAroundEquals", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Determines if formatter should place spaces around equals sign.
+        /// </summary>
+        public static string Settings_SpacesAroundEquals_Description {
+            get {
+                return ResourceManager.GetString("Settings_SpacesAroundEquals_Description", resourceCulture);
             }
         }
         
@@ -2109,6 +3237,24 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Open {0} variable details in separate window.
+        /// </summary>
+        public static string ShowDetailCommandAutomationHelpText {
+            get {
+                return ResourceManager.GetString("ShowDetailCommandAutomationHelpText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show {0} variable details.
+        /// </summary>
+        public static string ShowDetailCommandAutomationName {
+            get {
+                return ResourceManager.GetString("ShowDetailCommandAutomationName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Show item details.
         /// </summary>
         public static string ShowDetailCommandTooltip {
@@ -2118,7 +3264,19 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to This operation requires SQL Data Tools package. Please add SQL Data Tools to the Visual Studio 2015 setup or install SSDT from https://msdn.microsoft.com/en-us/mt186501.aspx. You can modify Visual Studio installation in Control Panel -&gt; Uninstall Program -&gt; Right click on Visual Studio 2015 and select Change..
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        public static System.Drawing.Bitmap SQLFileNode {
+            get {
+                object obj = ResourceManager.GetObject("SQLFileNode", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This operation requires SQL Data Tools package. Please add SQL Data Tools to the Visual Studio 2015 setup or install SSDT from https://msdn.microsoft.com/en-us/mt186501.aspx.
+        ///    
+        ///You can modify Visual Studio installation in Control Panel -&gt; Uninstall Program -&gt; Right click on Visual Studio 2015 and select Change..
         /// </summary>
         public static string SqlPublish_NoSqlToolsVS14 {
             get {
@@ -2127,7 +3285,7 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to This operation requires SQL Data Tools package. Please add Data Storage and Processign workload to your Visual Studio setup..
+        ///   Looks up a localized string similar to This operation requires SQL Data Tools package. Please add Data Storage and Processing workload to your Visual Studio setup..
         /// </summary>
         public static string SqlPublish_NoSqlToolsVS15 {
             get {
@@ -2334,6 +3492,15 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to File.
+        /// </summary>
+        public static string SqlPublishDialog_TargetTypeFile {
+            get {
+                return ResourceManager.GetString("SqlPublishDialog_TargetTypeFile", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Project.
         /// </summary>
         public static string SqlPublishDialog_TargetTypeProject {
@@ -2415,6 +3582,24 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Data Frame.
+        /// </summary>
+        public static string Tab_DataFrame {
+            get {
+                return ResourceManager.GetString("Tab_DataFrame", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Input File.
+        /// </summary>
+        public static string Tab_InputFile {
+            get {
+                return ResourceManager.GetString("Tab_InputFile", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Fetching data....
         /// </summary>
         public static string TooltipPlaceholder {
@@ -2442,6 +3627,15 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Variable {0}, Type: {1}, Value: {2}.
+        /// </summary>
+        public static string VariableExplorer_EntryDescription {
+            get {
+                return ResourceManager.GetString("VariableExplorer_EntryDescription", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to No R Interactive.
         /// </summary>
         public static string VariableExplorer_EnvironmentName {
@@ -2451,11 +3645,29 @@ namespace Microsoft.VisualStudio.R.Package {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Selected environment.
+        /// </summary>
+        public static string VariableExplorer_EnvironmentsCombo_AccessibleName {
+            get {
+                return ResourceManager.GetString("VariableExplorer_EnvironmentsCombo_AccessibleName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Error retrieving environment list.
         /// </summary>
         public static string VariableExplorer_ErrorEnvironment {
             get {
                 return ResourceManager.GetString("VariableExplorer_ErrorEnvironment", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Expand variable.
+        /// </summary>
+        public static string VariableExplorer_ExpandVariable {
+            get {
+                return ResourceManager.GetString("VariableExplorer_ExpandVariable", resourceCulture);
             }
         }
         
@@ -2546,15 +3758,6 @@ namespace Microsoft.VisualStudio.R.Package {
         public static string Warning_RStudioKeyboardShortcuts {
             get {
                 return ResourceManager.GetString("Warning_RStudioKeyboardShortcuts", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Current file cannot be saved in the current encoding. Do you want to save file in UTF-8 and continue?.
-        /// </summary>
-        public static string Warning_SaveInUtf8 {
-            get {
-                return ResourceManager.GetString("Warning_SaveInUtf8", resourceCulture);
             }
         }
         

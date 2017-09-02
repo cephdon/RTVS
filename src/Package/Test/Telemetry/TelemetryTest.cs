@@ -5,8 +5,12 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using FluentAssertions;
 using Microsoft.Common.Core.Test.Telemetry;
-using Microsoft.R.Support.Help;
-using Microsoft.R.Support.Test.Utility;
+using Microsoft.Language.Editor.Test.Settings;
+using Microsoft.Markdown.Editor.Settings;
+using Microsoft.R.Components.Test.Stubs;
+using Microsoft.R.Editor;
+using Microsoft.R.Editor.Functions;
+using Microsoft.R.Editor.Settings;
 using Microsoft.UnitTests.Core.XUnit;
 using Microsoft.VisualStudio.R.Package.Telemetry;
 using Microsoft.VisualStudio.Shell.Interop;
@@ -20,6 +24,8 @@ namespace Microsoft.VisualStudio.R.Package.Test.Telemetry {
     [Category.Telemetry]
     public class TelemetryTest {
         private readonly IPackageIndex _packageIndex;
+        private readonly IREditorSettings _editorSettings;
+        private readonly IRMarkdownEditorSettings _markdownSettings;
 
         public TelemetryTest() {
             _packageIndex = Substitute.For<IPackageIndex>();
@@ -30,13 +36,17 @@ namespace Microsoft.VisualStudio.R.Package.Test.Telemetry {
             package1.Name.Returns("user_package");
 
             _packageIndex.Packages.Returns(new IPackageInfo[] { package1, package2 });
+
+            var storage = new TestSettingsStorage();
+            _editorSettings = new REditorSettings(storage);
+            _markdownSettings = new RMarkdownEditorSettings(storage);
         }
 
         [Test]
         public void ReportConfiguration() {
             var svc = new TelemetryTestService();
             string log;
-            using (var t = new RtvsTelemetry(_packageIndex, new TestRToolsSettings(), svc)) {
+            using (var t = new RtvsTelemetry(_packageIndex, new RSettingsStub(), _editorSettings, _markdownSettings, svc)) {
                 t.ReportConfiguration();
                 log = svc.SessionLog;
             }
@@ -50,7 +60,7 @@ namespace Microsoft.VisualStudio.R.Package.Test.Telemetry {
         public void ReportSettings() {
             var svc = new TelemetryTestService();
             string log;
-            using (var t = new RtvsTelemetry(_packageIndex, new TestRToolsSettings(), svc)) {
+            using (var t = new RtvsTelemetry(_packageIndex, new RSettingsStub(), _editorSettings, _markdownSettings, svc)) {
                 t.ReportSettings();
                 log = svc.SessionLog;
             }
@@ -66,12 +76,34 @@ namespace Microsoft.VisualStudio.R.Package.Test.Telemetry {
             log.Should().Contain("CommitOnEnter");
             log.Should().Contain("CommitOnSpace");
             log.Should().Contain("FormatOnPaste");
-            log.Should().Contain("SendToReplOnCtrlEnter");
             log.Should().Contain("ShowCompletionOnFirstChar");
             log.Should().Contain("SignatureHelpEnabled");
             log.Should().Contain("CompletionEnabled");
             log.Should().Contain("SyntaxCheckInRepl");
-            log.Should().Contain("PartialArgumentNameMatch");
+            log.Should().Contain("LinterEnabled");
+            log.Should().Contain("LinterCamelCase");
+            log.Should().Contain("LinterPascalCase");
+            log.Should().Contain("LinterSnakeCase");
+            log.Should().Contain("LinterUpperCase");
+            log.Should().Contain("LinterSemicolons");
+            log.Should().Contain("LinterMultipleDots");
+            log.Should().Contain("LinterMultipleStatements");
+            log.Should().Contain("LinterNameLength");
+            log.Should().Contain("LinterMaxNameLength");
+            log.Should().Contain("LinterAssignmentType");
+            log.Should().Contain("LinterSpaceAroundComma");
+            log.Should().Contain("LinterSpaceBeforeOpenBrace");
+            log.Should().Contain("LinterSpacesAroundOperators");
+            log.Should().Contain("LinterSpacesInsideParenthesis");
+            log.Should().Contain("LinterCloseCurlySeparateLine");
+            log.Should().Contain("LinterNoSpaceAfterFunctionName");
+            log.Should().Contain("LinterOpenCurlyPosition");
+            log.Should().Contain("LinterNoTabs");
+            log.Should().Contain("LinterTrailingWhitespace");
+            log.Should().Contain("LinterTrailingBlankLines");
+            log.Should().Contain("LinterDoubleQuotes");
+            log.Should().Contain("LinterLineLength");
+            log.Should().Contain("LinterMaxLineLength");
         }
 
         [Test]
@@ -89,7 +121,7 @@ namespace Microsoft.VisualStudio.R.Package.Test.Telemetry {
             shell.CreateToolWindow(0, 3, null, ref g, ref p3, ref g, null, "Window#3", null, out frame);
 
             string log;
-            using (var t = new RtvsTelemetry(_packageIndex, new TestRToolsSettings(), svc)) {
+            using (var t = new RtvsTelemetry(_packageIndex, new RSettingsStub(), _editorSettings, _markdownSettings, svc)) {
                 t.ReportWindowLayout(shell);
                 log = svc.SessionLog;
             }

@@ -4,26 +4,22 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Reflection;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Forms.Integration;
 using Microsoft.Common.Core;
-using Microsoft.Languages.Editor.Controller;
-using Microsoft.Languages.Editor.Tasks;
-using Microsoft.R.Components.Controller;
+using Microsoft.Common.Core.Idle;
+using Microsoft.Common.Core.Services;
+using Microsoft.Common.Core.Shell;
+using Microsoft.Common.Core.UI;
 using Microsoft.R.Components.Help;
 using Microsoft.R.Components.InteractiveWorkflow;
 using Microsoft.R.Components.Settings;
 using Microsoft.R.Components.View;
 using Microsoft.R.Host.Client;
-using Microsoft.R.Host.Client.Session;
-using Microsoft.R.Support.Settings;
 using Microsoft.VisualStudio.PlatformUI;
-using Microsoft.VisualStudio.R.Package.Browsers;
-using Microsoft.VisualStudio.R.Package.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using mshtml;
 using ContentControl = System.Windows.Controls.ContentControl;
@@ -40,37 +36,30 @@ namespace Microsoft.VisualStudio.R.Package.Help {
         /// </summary>
         private readonly ContentControl _windowContentControl;
         private readonly IVignetteCodeColorBuilder _codeColorBuilder;
-        private IRSession _session;
+        private readonly IServiceContainer _services;
+        private readonly IRSession _session;
         private WindowsFormsHost _host;
 
-        public HelpVisualComponent() {
-            _codeColorBuilder = VsAppShell.Current.ExportProvider.GetExportedValue<IVignetteCodeColorBuilder>();
+        public HelpVisualComponent(IServiceContainer services) {
+            _services = services;
 
-            var workflow = VsAppShell.Current.ExportProvider.GetExportedValue<IRInteractiveWorkflowProvider>().GetOrCreate();
+            _codeColorBuilder = _services.GetService<IVignetteCodeColorBuilder>();
+            var workflow = _services.GetService<IRInteractiveWorkflowProvider>().GetOrCreate();
             workflow.RSessions.BrokerStateChanged += OnBrokerStateChanged;
 
             _session = workflow.RSession;
             _session.Disconnected += OnRSessionDisconnected;
 
             _windowContentControl = new ContentControl();
-            Control = _windowContentControl;
-
-            var c = new Controller();
-            c.AddCommandSet(GetCommands());
-            Controller = c;
 
             CreateBrowser();
             VSColorTheme.ThemeChanged += OnColorThemeChanged;
         }
 
-        private void OnColorThemeChanged(ThemeChangedEventArgs e) {
-            SetThemeColors();
-        }
+        private void OnColorThemeChanged(ThemeChangedEventArgs e) => SetThemeColors();
 
         #region IVisualComponent
-        public ICommandTarget Controller { get; }
-
-        public FrameworkElement Control { get; }
+        public FrameworkElement Control => _windowContentControl;
         public IVisualComponentContainer<IVisualComponent> Container { get; internal set; }
 
         #endregion
@@ -84,11 +73,12 @@ namespace Microsoft.VisualStudio.R.Package.Help {
         public void Navigate(string url) {
             // Filter out localhost help URL from absolute URLs
             // except when the URL is the main landing page.
-            if (RToolsSettings.Current.HelpBrowserType == HelpBrowserType.Automatic && IsHelpUrl(url)) {
+            var settings = _services.GetService<IRSettings>();
+            if (settings.HelpBrowserType == HelpBrowserType.Automatic && IsHelpUrl(url)) {
+                Container?.Show(focus: false, immediate: false);
                 NavigateTo(url);
             } else {
-                var wbs = VsAppShell.Current.ExportProvider.GetExportedValue<IWebBrowserServices>();
-                wbs.OpenBrowser(WebBrowserRole.Shiny, url);
+                _services.Process().Start(url);
             }
         }
 
@@ -97,22 +87,22 @@ namespace Microsoft.VisualStudio.R.Package.Help {
 
         private void OnRSessionDisconnected(object sender, EventArgs e) {
             // Event fires on a background thread
-            VsAppShell.Current.DispatchOnUIThread(CloseBrowser);
+            _services.MainThread().Post(CloseBrowser);
         }
 
         private void OnBrokerStateChanged(object sender, BrokerStateChangedEventArgs e) {
             if (!e.IsConnected) {
                 // Event mey fire on a background thread
-                VsAppShell.Current.DispatchOnUIThread(CloseBrowser);
+                _services.MainThread().Post(CloseBrowser);
             }
         }
 
         private void CreateBrowser() {
             if (Browser == null) {
-                Browser = new WebBrowser();
-
-                Browser.WebBrowserShortcutsEnabled = true;
-                Browser.IsWebBrowserContextMenuEnabled = true;
+                Browser = new WebBrowser {
+                    WebBrowserShortcutsEnabled = true,
+                    IsWebBrowserContextMenuEnabled = true
+                };
 
                 Browser.Navigating += OnNavigating;
                 Browser.Navigated += OnNavigated;
@@ -195,9 +185,9 @@ namespace Microsoft.VisualStudio.R.Package.Help {
             if (VisualTheme != null) {
                 cssfileName = VisualTheme;
             } else {
-                Color defaultBackground = VSColorTheme.GetThemedColor(EnvironmentColors.ToolWindowBackgroundColorKey);
                 // TODO: We can generate CSS from specific VS colors. For now, just do Dark and Light.
-                cssfileName = defaultBackground.GetBrightness() < 0.5 ? "Dark.css" : "Light.css";
+                var ui = _services.UI();
+                cssfileName = ui.UIColorTheme == UIColorTheme.Dark ? "Dark.css" : "Light.css";
             }
 
             if (!string.IsNullOrEmpty(cssfileName)) {
@@ -223,8 +213,7 @@ namespace Microsoft.VisualStudio.R.Package.Help {
             string url = e.Url.ToString();
             if (!IsHelpUrl(url)) {
                 e.Cancel = true;
-                var wbs = VsAppShell.Current.ExportProvider.GetExportedValue<IWebBrowserServices>();
-                wbs.OpenBrowser(WebBrowserRole.External, url);
+                _services.Process().Start(url);
             }
         }
 
@@ -236,7 +225,7 @@ namespace Microsoft.VisualStudio.R.Package.Help {
 
             // Upon navigation we need to ask VS to update UI so 
             // Back/Forward buttons become properly enabled or disabled.
-            IVsUIShell shell = VsAppShell.Current.GetGlobalService<IVsUIShell>(typeof(SVsUIShell));
+            IVsUIShell shell = _services.GetService<IVsUIShell>(typeof(SVsUIShell));
             shell.UpdateCommandUI(0);
         }
 
@@ -251,7 +240,7 @@ namespace Microsoft.VisualStudio.R.Package.Help {
             if (!ConnectBrowser()) {
                 // The browser document is not ready yet. Create another idle 
                 // time action that will run after few milliseconds.
-                IdleTimeAction.Create(SetThemeColorsWhenReady, 10, new object(), VsAppShell.Current);
+                IdleTimeAction.Create(SetThemeColorsWhenReady, 10, new object(), _services.GetService<IIdleTimeService>());
             }
         }
 
@@ -264,20 +253,13 @@ namespace Microsoft.VisualStudio.R.Package.Help {
 
         private static bool IsHelpUrl(string url) {
             Uri uri = new Uri(url);
+            if(uri.AbsoluteUri.EndsWithIgnoreCase(".pdf")) {
+                return false;
+            }
             // dynamicHelp.R (startDynamicHelp function):
             // # Choose 10 random port numbers between 10000 and 32000
             // ports <- 10000 + 22000*((stats::runif(10) + unclass(Sys.time())/300) %% 1)
             return uri.IsLoopback && uri.Port >= 10000 && uri.Port <= 32000 && !string.IsNullOrEmpty(uri.PathAndQuery);
-        }
-
-        private IEnumerable<ICommand> GetCommands() {
-            List<ICommand> commands = new List<ICommand>() {
-                new HelpPreviousCommand(this),
-                new HelpNextCommand(this),
-                new HelpHomeCommand(this),
-                new HelpRefreshCommand(this)
-            };
-            return commands;
         }
 
         public void Dispose() {
@@ -290,7 +272,6 @@ namespace Microsoft.VisualStudio.R.Package.Help {
         private void DisconnectFromSessionEvents() {
             if (_session != null) {
                 _session.Disconnected -= OnRSessionDisconnected;
-                _session = null;
             }
         }
 
@@ -299,8 +280,10 @@ namespace Microsoft.VisualStudio.R.Package.Help {
 
             if (Browser != null) {
                 DisconnectWindowEvents();
+
                 Browser.Navigating -= OnNavigating;
                 Browser.Navigated -= OnNavigated;
+
                 Browser.Dispose();
                 Browser = null;
             }

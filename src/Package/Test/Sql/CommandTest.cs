@@ -5,39 +5,38 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using FluentAssertions;
+using Microsoft.Common.Core.Shell;
+using Microsoft.Common.Core.Test.Fakes.Shell;
 using Microsoft.R.Components.Application.Configuration;
 using Microsoft.R.Components.InteractiveWorkflow;
 using Microsoft.R.Components.Sql;
+using Microsoft.R.Components.Sql.Publish;
 using Microsoft.R.Host.Client;
 using Microsoft.UnitTests.Core.XUnit;
 using Microsoft.VisualStudio.OLE.Interop;
 using Microsoft.VisualStudio.ProjectSystem;
+using Microsoft.VisualStudio.ProjectSystem.Properties;
 using Microsoft.VisualStudio.R.Package.Commands;
 using Microsoft.VisualStudio.R.Package.ProjectSystem;
 using Microsoft.VisualStudio.R.Package.ProjectSystem.Configuration;
-using Microsoft.VisualStudio.R.Package.Shell;
 using Microsoft.VisualStudio.R.Package.Sql;
 using Microsoft.VisualStudio.Shell.Interop;
 using NSubstitute;
-using static System.FormattableString;
-using Microsoft.R.Components.Sql.Publish;
-
-#if VS14
-using Microsoft.VisualStudio.ProjectSystem.Designers;
-#elif VS15
-using Microsoft.VisualStudio.ProjectSystem.Properties;
-#endif
 
 namespace Microsoft.VisualStudio.R.Package.Test.Sql {
     [ExcludeFromCodeCoverage]
     [Category.Sql]
     public class CommandTest {
-        private readonly IApplicationShell _appShell;
+        private readonly TestCoreShell _shell;
         private readonly IProjectSystemServices _pss;
+        private readonly IDacPackageServicesProvider _servicesProvider;
+        private readonly ISettingsStorage _storage;
 
         public CommandTest() {
-            _appShell = Substitute.For<IApplicationShell>();
+            _shell = TestCoreShell.CreateSubstitute();
             _pss = Substitute.For<IProjectSystemServices>();
+            _servicesProvider = Substitute.For<IDacPackageServicesProvider>();
+            _storage = Substitute.For<ISettingsStorage>();
         }
 
         [Test(ThreadType.UI)]
@@ -97,14 +96,13 @@ namespace Microsoft.VisualStudio.R.Package.Test.Sql {
             s.EditorType.Should().Be(ConnectionStringEditor.ConnectionStringEditorName);
             s.Description.Should().Be(Resources.ConnectionStringDescription);
 
-            operations.Received(1).EnqueueExpression(Invariant($"dbConnection3 <- 'DSN'"), true);
+            var expected = "if (!exists('settings')) { settings <- as.environment(list()); }; if (is.environment(settings)) { settings$dbConnection3 = \"DSN\"; }";
+            operations.Received(1).EnqueueExpression(expected, true);
         }
 
         [Test(ThreadType.UI)]
         public void PublishSProcCommandStatus() {
-            var servicesProvider = Substitute.For<IDacPackageServicesProvider>();
-
-            var cmd = new PublishSProcCommand(_appShell, _pss, servicesProvider);
+            var cmd = new PublishSProcCommand(_shell, _pss, _servicesProvider, _storage);
             cmd.GetCommandStatus(null, 0, true, null, CommandStatus.NotSupported).Should().Be(CommandStatusResult.Unhandled);
             cmd.GetCommandStatus(null, RPackageCommandId.icmdPublishSProc, true, null, CommandStatus.NotSupported)
                 .Should().Be(new CommandStatusResult(true, null, CommandStatus.Enabled | CommandStatus.Supported));
@@ -125,11 +123,9 @@ namespace Microsoft.VisualStudio.R.Package.Test.Sql {
             });
             _pss.GetSelectedProject<IVsHierarchy>().Returns(hier);
 
-            var servicesProvider = Substitute.For<IDacPackageServicesProvider>();
-
-            var cmd = new PublishSProcCommand(_appShell, _pss, servicesProvider);
+            var cmd = new PublishSProcCommand(_shell, _pss, _servicesProvider, _storage);
             cmd.TryHandleCommand(null, RPackageCommandId.icmdPublishSProc, false, 0, IntPtr.Zero, IntPtr.Zero).Should().BeTrue();
-            //_appShell.Received().ShowErrorMessage(Resources.SqlPublishDialog_NoDbProject);
+            //_shell.Received().ShowErrorMessage(Resources.SqlPublishDialog_NoDbProject);
         }
 
         [Test(ThreadType.UI)]
@@ -155,9 +151,10 @@ namespace Microsoft.VisualStudio.R.Package.Test.Sql {
 
             var servicesProvider = Substitute.For<IDacPackageServicesProvider>();
 
-            var cmd = new PublishSProcCommand(_appShell, _pss, servicesProvider);
+            var cmd = new PublishSProcCommand(_shell, _pss, _servicesProvider, _storage);
             cmd.TryHandleCommand(null, RPackageCommandId.icmdPublishSProc, false, 0, IntPtr.Zero, IntPtr.Zero).Should().BeTrue();
-            _appShell.Received().ShowErrorMessage(Resources.SqlPublishDialog_NoSProcFiles);
+            var es = _shell.UI();
+            es.Received().ShowErrorMessage(Resources.SqlPublishDialog_NoSProcFiles);
         }
     }
 }

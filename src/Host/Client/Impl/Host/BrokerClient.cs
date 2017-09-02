@@ -2,26 +2,28 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Net.Security;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.WebSockets.Client;
 using Microsoft.Common.Core;
 using Microsoft.Common.Core.Disposables;
+using Microsoft.Common.Core.IO;
+using Microsoft.Common.Core.Json;
 using Microsoft.Common.Core.Logging;
 using Microsoft.Common.Core.Net;
-using Microsoft.Common.Core.Threading;
+using Microsoft.Common.Core.Services;
 using Microsoft.R.Host.Client.BrokerServices;
 using Microsoft.R.Host.Protocol;
-using Newtonsoft.Json;
+using static System.FormattableString;
 
 namespace Microsoft.R.Host.Client.Host {
-    internal abstract class BrokerClient : IBrokerClient {
+    public abstract class BrokerClient : IBrokerClient {
         private static readonly TimeSpan HeartbeatTimeout =
 #if DEBUG
             // In debug mode, increase the timeout significantly, so that when the host is paused in debugger,
@@ -30,154 +32,171 @@ namespace Microsoft.R.Host.Client.Host {
 #else
             TimeSpan.FromSeconds(5);
 #endif
+        private static IReadOnlyDictionary<Type, string> _typeToEndpointMap = new Dictionary<Type, string>() {
+            { typeof(AboutHost), "info/about"},
+            { typeof(HostLoad), "info/load"}
+        };
 
         private readonly string _interpreterId;
+        private readonly string _rCommandLineArguments;
         private readonly ICredentialsDecorator _credentials;
-
-        private AboutHost _aboutHost;
+        private readonly IConsole _console;
+        private readonly IServiceContainer _services;
 
         protected DisposableBag DisposableBag { get; } = DisposableBag.Create<BrokerClient>();
         protected IActionLog Log { get; }
-        protected WebRequestHandler HttpClientHandler { get; private set; }
+        protected WinHttpHandler HttpClientHandler { get; private set; }
         protected HttpClient HttpClient { get; private set; }
 
+        public BrokerConnectionInfo ConnectionInfo { get; }
         public string Name { get; }
-        public Uri Uri { get; }
-        public bool IsRemote => !Uri.IsFile;
-        public AboutHost AboutHost => _aboutHost ?? AboutHost.Empty;
+        public bool IsRemote => ConnectionInfo.IsRemote;
         public bool IsVerified { get; protected set; }
 
-        protected BrokerClient(string name, Uri brokerUri, string interpreterId, ICredentialsDecorator credentials, IActionLog log) {
+        protected BrokerClient(string name, BrokerConnectionInfo connectionInfo, ICredentialsDecorator credentials, IConsole console, IServiceContainer services) {
             Name = name;
-            Uri = brokerUri;
-            Log = log;
+            Log = services.Log();
 
-            _interpreterId = interpreterId;
+            _rCommandLineArguments = connectionInfo.RCommandLineArguments;
+            _interpreterId = connectionInfo.InterpreterId;
             _credentials = credentials;
+            _console = console;
+            ConnectionInfo = connectionInfo;
+            _services = services;
         }
 
         protected void CreateHttpClient(Uri baseAddress) {
-            HttpClientHandler = new WebRequestHandler {
+            HttpClientHandler = new WinHttpHandler {
                 PreAuthenticate = true,
-                Credentials = _credentials
+                ServerCredentials = _credentials
             };
 
-            HttpClient = new HttpClient(HttpClientHandler) {
-                BaseAddress = baseAddress,
-                Timeout = TimeSpan.FromSeconds(30),
-            };
+            try {
+                HttpClient = new HttpClient(HttpClientHandler) {
+                    BaseAddress = baseAddress,
+                    Timeout = TimeSpan.FromSeconds(30),
+                };
+            } catch(ArgumentException) {
+                var message = Resources.Error_InvalidUrl.FormatInvariant(baseAddress);
+                _console.WriteLine(message); // Output now since progress dialog may eat the exception
+                throw new RHostDisconnectedException(message);
+            }
 
             HttpClient.DefaultRequestHeaders.Accept.Clear();
             HttpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         }
 
-        protected virtual void Dispose(bool disposing) => DisposableBag.TryDispose();
-        public void Dispose() => Dispose(true);
+        public void Dispose() => DisposableBag.TryDispose();
 
-        public async Task PingAsync() {
-            if (HttpClient != null) {
-                // Just in case ping was disable for security reasons, try connecting to the broker anyway.
-                try {
-                    await GetHostInformationAsync(CancellationToken.None);
-                } catch (HttpRequestException ex) {
-                    throw await HandleHttpRequestExceptionAsync(ex);
+        public async Task<T> GetHostInformationAsync<T>(CancellationToken cancellationToken) {
+            string result = null;
+            try {
+                if (!_typeToEndpointMap.TryGetValue(typeof(T), out string endpoint)) {
+                    throw new ArgumentException($"There is no endpoint for type {typeof(T)}");
                 }
+
+                if (HttpClient != null) {
+                    var response = await HttpClient.GetAsync(endpoint, cancellationToken);
+                    result = response != null ? await response.Content.ReadAsStringAsync() : null;
+                }
+
+                return !string.IsNullOrEmpty(result) ? Json.DeserializeObject<T>(result) : default(T);
+            } catch (HttpRequestException ex) {
+                throw new RHostDisconnectedException(Resources.Error_HostNotResponding.FormatInvariant(Name, ex.Message), ex);
             }
         }
 
-        public virtual async Task<RHost> ConnectAsync(string name, IRCallbacks callbacks, string rCommandLineArguments = null, int timeout = 3000,
-            CancellationToken cancellationToken = default(CancellationToken), ReentrancyToken reentrancyToken = default(ReentrancyToken)) {
+        public async Task DeleteProfileAsync(CancellationToken cancellationToken) {
+            await TaskUtilities.SwitchToBackgroundThread();
+            try {
+                var sessionsService = new ProfileWebService(HttpClient, _credentials, Log);
+                await sessionsService.DeleteAsync(cancellationToken);
+            } catch (HttpRequestException ex) {
+                throw new RHostDisconnectedException(Resources.Error_HostNotResponding.FormatInvariant(Name, ex.Message), ex);
+            }
+        }
 
+        public virtual async Task<RHost> ConnectAsync(HostConnectionInfo connectionInfo, CancellationToken cancellationToken = default(CancellationToken)) {
             DisposableBag.ThrowIfDisposed();
-
             await TaskUtilities.SwitchToBackgroundThread();
 
+            var uniqueSessionName = $"{connectionInfo.Name}_{ConnectionInfo.ParametersId}";
             try {
-                bool sessionExists = false; //await IsSessionRunningAsync(name, cancellationToken);
-
-                WebSocket webSocket;
-                while (true) {
-                    if (!sessionExists) {
-                        await CreateBrokerSessionAsync(name, rCommandLineArguments, cancellationToken);
-                    }
-
-                    try {
-                        webSocket = await ConnectToBrokerAsync(name, cancellationToken);
-                        break;
-                    } catch (RHostDisconnectedException ex) when (
-                        sessionExists && ((ex.InnerException as WebException)?.Response as HttpWebResponse)?.StatusCode == HttpStatusCode.NotFound
-                    ) {
-                        // If we believed the session to be running, but failed to connect to its pipe, it probably terminated
-                        // between our check and our attempt to connect. Retry, but recreate the session this time.
-                        sessionExists = false;
-                        continue;
+                var sessionExists = connectionInfo.PreserveSessionData && await IsSessionRunningAsync(uniqueSessionName, cancellationToken);
+                if (sessionExists) {
+                    var terminateRDataSave = await _console.PromptYesNoAsync(Resources.AbortRDataAutosave, cancellationToken);
+                    if (!terminateRDataSave) {
+                        while (await IsSessionRunningAsync(uniqueSessionName, cancellationToken)) {
+                            await Task.Delay(500, cancellationToken);
+                        }
                     }
                 }
 
-                var host = CreateRHost(name, callbacks, webSocket);
-                await GetHostInformationAsync(cancellationToken);
-                return host;
+                await CreateBrokerSessionAsync(uniqueSessionName, connectionInfo.UseRHostCommandLineArguments, connectionInfo.IsInteractive, cancellationToken);
+                var webSocket = await ConnectToBrokerAsync(uniqueSessionName, cancellationToken);
+                return CreateRHost(uniqueSessionName, connectionInfo.Callbacks, webSocket);
             } catch (HttpRequestException ex) {
                 throw await HandleHttpRequestExceptionAsync(ex);
             }
         }
 
         public Task TerminateSessionAsync(string name, CancellationToken cancellationToken = default(CancellationToken)) {
-            var sessionsService = new SessionsWebService(HttpClient, _credentials);
+            var sessionsService = new SessionsWebService(HttpClient, _credentials, Log);
             return sessionsService.DeleteAsync(name, cancellationToken);
         }
 
-        protected virtual Task<Exception> HandleHttpRequestExceptionAsync(HttpRequestException exception) 
-            => Task.FromResult<Exception>(new RHostDisconnectedException(Resources.Error_HostNotResponding.FormatInvariant(exception.Message), exception));
+        protected virtual Task<Exception> HandleHttpRequestExceptionAsync(HttpRequestException exception)
+            => Task.FromResult<Exception>(new RHostDisconnectedException(Resources.Error_HostNotResponding.FormatInvariant(Name, exception.Message), exception));
 
         private async Task<bool> IsSessionRunningAsync(string name, CancellationToken cancellationToken) {
-            var sessionsService = new SessionsWebService(HttpClient, _credentials);
+            var sessionsService = new SessionsWebService(HttpClient, _credentials, Log);
             var sessions = await sessionsService.GetAsync(cancellationToken);
             return sessions.Any(s => s.Id == name);
         }
 
-        private async Task CreateBrokerSessionAsync(string name, string rCommandLineArguments, CancellationToken cancellationToken) {
-            rCommandLineArguments = rCommandLineArguments ?? string.Empty;
-            var sessions = new SessionsWebService(HttpClient, _credentials);
-            try {
-                await sessions.PutAsync(name, new SessionCreateRequest {
-                    InterpreterId = _interpreterId,
-                    CommandLineArguments = rCommandLineArguments,
-                }, cancellationToken);
-            } catch (BrokerApiErrorException apiex) {
-                throw new RHostDisconnectedException(apiex);
+        private async Task CreateBrokerSessionAsync(string name, bool useRCommandLineArguments, bool isInteractive, CancellationToken cancellationToken) {
+            var rCommandLineArguments = useRCommandLineArguments && _rCommandLineArguments != null ? _rCommandLineArguments : null;
+            var sessions = new SessionsWebService(HttpClient, _credentials, Log);
+            using (Log.Measure(LogVerbosity.Normal, Invariant($"Create broker session \"{name}\""))) {
+                try {
+                    await sessions.PutAsync(name, new SessionCreateRequest {
+                        InterpreterId = _interpreterId,
+                        CommandLineArguments = rCommandLineArguments,
+                        IsInteractive = isInteractive,
+                    }, cancellationToken);
+                } catch (BrokerApiErrorException apiex) {
+                    throw new RHostDisconnectedException(MessageFromBrokerApiException(apiex), apiex);
+                }
             }
         }
 
         private async Task<WebSocket> ConnectToBrokerAsync(string name, CancellationToken cancellationToken) {
-            var wsClient = new WebSocketClient {
-                KeepAliveInterval = HeartbeatTimeout,
-                SubProtocols = { "Microsoft.R.Host" },
-                InspectResponse = response => {
+            using (Log.Measure(LogVerbosity.Normal, Invariant($"Connect to broker session \"{name}\""))) {
+                var wsClientFactory = _services.GetService<IWebSocketClientService>();
+                var wsClient = wsClientFactory.Create(new List<string> { "Microsoft.R.Host" });
+                wsClient.KeepAliveInterval = HeartbeatTimeout;
+                wsClient.InspectResponse = response => {
                     if (response.StatusCode == HttpStatusCode.Forbidden) {
                         throw new UnauthorizedAccessException();
                     }
-                }
-            };
+                };
 
-            var pipeUri = new UriBuilder(HttpClient.BaseAddress) {
-                Scheme = HttpClient.BaseAddress.IsHttps() ? "wss" : "ws",
-                Path = $"sessions/{name}/pipe"
-            }.Uri;
+                var pipeUri = new UriBuilder(HttpClient.BaseAddress) {
+                    Scheme = HttpClient.BaseAddress.IsHttps() ? "wss" : "ws",
+                    Path = $"sessions/{name}/pipe"
+                }.Uri;
 
-            while (true) {
-                var request = wsClient.CreateRequest(pipeUri);
+                while (true) {
+                    var request = wsClient.CreateRequest(pipeUri, HttpClientHandler.ServerCredentials);
 
-                using (await _credentials.LockCredentialsAsync(cancellationToken)) {
-                    try {
-                        request.AuthenticationLevel = AuthenticationLevel.MutualAuthRequested;
-                        request.Credentials = HttpClientHandler.Credentials;
-                        return await wsClient.ConnectAsync(request, cancellationToken);
-                    } catch (UnauthorizedAccessException) {
-                        _credentials.InvalidateCredentials();
-                        continue;
-                    } catch (Exception ex) when (ex is InvalidOperationException) {
-                        throw new RHostDisconnectedException(Resources.HttpErrorCreatingSession.FormatInvariant(ex.Message), ex);
+                    using (await _credentials.LockCredentialsAsync(cancellationToken)) {
+                        try {
+                            return await wsClient.ConnectAsync(request, cancellationToken);
+                        } catch (UnauthorizedAccessException) {
+                            _credentials.InvalidateCredentials();
+                        } catch (Exception ex) when (ex is InvalidOperationException) {
+                            throw new RHostDisconnectedException(Resources.HttpErrorCreatingSession.FormatInvariant(Name, ex.Message), ex);
+                        }
                     }
                 }
             }
@@ -185,23 +204,42 @@ namespace Microsoft.R.Host.Client.Host {
 
         private RHost CreateRHost(string name, IRCallbacks callbacks, WebSocket socket) {
             var transport = new WebSocketMessageTransport(socket);
-
-            var cts = new CancellationTokenSource();
-            cts.Token.Register(() => { Log.RHostProcessExited(); });
-
-            return new RHost(name, callbacks, transport, Log, cts);
+            return new RHost(name, callbacks, transport, Log);
         }
 
-        private async Task GetHostInformationAsync(CancellationToken cancellationToken) {
-            if (_aboutHost == null) {
-                var response = await HttpClient.GetAsync("/about", cancellationToken);
-                var s = await response.Content.ReadAsStringAsync();
-                _aboutHost = !string.IsNullOrEmpty(s) ? JsonConvert.DeserializeObject<AboutHost>(s) : AboutHost.Empty;
+        private string MessageFromBrokerApiException(BrokerApiErrorException ex) {
+            switch (ex.ApiError) {
+                case BrokerApiError.NoRInterpreters:
+                    return Resources.Error_NoRInterpreters;
+                case BrokerApiError.InterpreterNotFound:
+                    return Resources.Error_InterpreterNotFound.FormatInvariant(_interpreterId);
+                case BrokerApiError.UnableToStartRHost:
+                    if (!string.IsNullOrEmpty(ex.Message)) {
+                        return Resources.Error_UnableToStartHostException.FormatInvariant(Name, ex.Message);
+                    }
+                    return Resources.Error_UnknownError;
+                case BrokerApiError.PipeAlreadyConnected:
+                    return Resources.Error_PipeAlreadyConnected;
+                case BrokerApiError.Win32Error:
+                    if (!string.IsNullOrEmpty(ex.Message)) {
+                        return Resources.Error_BrokerWin32Error.FormatInvariant(ex.Message);
+                    }
+                    return Resources.Error_BrokerUnknownWin32Error;
             }
+
+            Debug.Fail("No localized resources for broker API error" + ex.ApiError.ToString());
+            return ex.ApiError.ToString();
         }
 
-        public virtual string HandleUrl(string url, CancellationToken ct) {
-            return url;
+        public virtual Task<string> HandleUrlAsync(string url, CancellationToken cancellationToken) {
+            var ub = new UriBuilder(url);
+            if (ub.Scheme.StartsWithIgnoreCase("file")) {
+                var remotingService = _services.GetService<IRemotingWebServer>();
+                var fs = _services.GetService<IFileSystem>();
+                return remotingService.HandleLocalStaticFileUrlAsync(url, _console, cancellationToken);
+            }
+
+            return Task.FromResult(url);
         }
     }
 }

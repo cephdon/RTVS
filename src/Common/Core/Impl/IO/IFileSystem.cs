@@ -31,12 +31,17 @@ namespace Microsoft.Common.Core.IO {
 
         Stream CreateFile(string path);
         Stream FileOpen(string path, FileMode mode);
-        
-        IFileVersionInfo GetVersionInfo(string path);
+
+        Version GetFileVersion(string path);
         void DeleteFile(string path);
         void DeleteDirectory(string path, bool recursive);
         string[] GetFileSystemEntries(string path, string searchPattern, SearchOption options);
         void CreateDirectory(string path);
+
+        string[] GetFiles(string path);
+        string[] GetFiles(string path, string pattern);
+        string[] GetFiles(string path, string pattern, SearchOption option);
+        string[] GetDirectories(string path);
 
         string GetDownloadsPath(string fileName = "");
 

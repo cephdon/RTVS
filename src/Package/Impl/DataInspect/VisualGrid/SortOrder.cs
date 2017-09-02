@@ -4,9 +4,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Microsoft.Common.Core;
-using Microsoft.R.Host.Client;
-using static System.FormattableString;
 
 namespace Microsoft.VisualStudio.R.Package.DataInspect {
     /// <summary>
@@ -47,9 +44,7 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect {
             }
         }
 
-        public void Add(ColumnSortOrder order) {
-            _sortOrderList.Add(order);
-        }
+        public void Add(ColumnSortOrder order) => _sortOrderList.Add(order);
 
         /// <remarks>
         /// Complete expression looks like:

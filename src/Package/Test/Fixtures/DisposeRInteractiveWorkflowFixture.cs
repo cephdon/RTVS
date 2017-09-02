@@ -3,6 +3,7 @@
 
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
+using Microsoft.Common.Core.Shell;
 using Microsoft.R.Components.InteractiveWorkflow;
 using Microsoft.VisualStudio.R.Package.Shell;
 using Xunit;
@@ -14,7 +15,7 @@ namespace Microsoft.VisualStudio.R.Package.Test.Fixtures {
         private readonly IRInteractiveWorkflow _workflow;
 
         public DisposeRInteractiveWorkflowFixture() {
-            _workflow = VsAppShell.Current.ExportProvider.GetExportedValue<IRInteractiveWorkflowProvider>().GetOrCreate();
+            _workflow = VsAppShell.Current.GetService<IRInteractiveWorkflowProvider>().GetOrCreate();
         }
         
         public async Task InitializeAsync() {

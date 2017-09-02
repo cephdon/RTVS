@@ -7,34 +7,36 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Media;
 using Microsoft.Common.Core;
 using Microsoft.R.Wpf;
-using Microsoft.VisualStudio.Imaging;
 using Microsoft.VisualStudio.Imaging.Interop;
 using Microsoft.VisualStudio.PlatformUI;
-using Microsoft.VisualStudio.R.Package.Shell;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Brushes = Microsoft.R.Wpf.Brushes;
 
-namespace Microsoft.VisualStudio.R.Package.Wpf {
-    public static class VsWpfOverrides {
+namespace Microsoft.VisualStudio.R.Package.Wpf
+{
+    public static class VsWpfOverrides
+    {
         private static readonly Lazy<Assembly> ExtensionsExplorerUIAssemblyLazy = Lazy.Create(() => AppDomain.CurrentDomain.Load("Microsoft.VisualStudio.ExtensionsExplorer.UI"));
 
-        public static void Apply(IApplicationShell current) {
+        public static void Apply()
+        {
             OverrideBrushes();
             OverrideFontKeys();
-            OverrideImageSources(current);
+            OverrideImageSources();
             OverrideStyleKeys();
         }
 
         private static void OverrideBrushes() {
             Brushes.ActiveBorderKey = VsBrushes.ActiveBorderKey;
             Brushes.BorderBrushKey = VsBrushes.BrandedUIBorderKey;
-            Brushes.ButtonFaceBrushKey = VsBrushes.ButtonFaceKey;
-            Brushes.ButtonTextBrushKey = VsBrushes.ButtonTextKey;
+            Brushes.ButtonFaceBrushKey = EnvironmentColors.SystemButtonFaceBrushKey;
+            Brushes.ButtonHighlightBrushKey = EnvironmentColors.SystemButtonHighlightBrushKey;
+            Brushes.ButtonShadowBrushKey = EnvironmentColors.SystemButtonShadowBrushKey;
+            Brushes.ButtonTextBrushKey = EnvironmentColors.SystemButtonTextBrushKey;
             Brushes.ComboBoxBorderKey = VsBrushes.ComboBoxBorderKey;
             Brushes.ControlKey = VsBrushes.ThreeDFaceKey;
             Brushes.ControlDarkKey = VsBrushes.ThreeDShadowKey;
@@ -50,12 +52,27 @@ namespace Microsoft.VisualStudio.R.Package.Wpf {
             Brushes.LegalMessageBackgroundKey = VsBrushes.BrandedUIBackgroundKey;
             Brushes.ListPaneBackgroundKey = VsBrushes.BrandedUIBackgroundKey;
             Brushes.SplitterBackgroundKey = VsBrushes.CommandShelfBackgroundGradientKey;
-            Brushes.ToolWindowBorderKey = VsBrushes.ToolWindowBorderKey;
-            Brushes.ToolWindowButtonDownBorderKey = VsBrushes.ToolWindowButtonDownBorderKey;
-            Brushes.ToolWindowButtonDownKey = VsBrushes.ToolWindowButtonDownKey;
-            Brushes.ToolWindowButtonHoverActiveBorderKey = VsBrushes.ToolWindowButtonHoverActiveBorderKey;
-            Brushes.ToolWindowButtonHoverActiveKey = VsBrushes.ToolWindowButtonHoverActiveKey;
-            Brushes.ToolWindowTextKey = VsBrushes.ToolWindowTextKey;
+
+            Brushes.ToolWindowBackgroundColorKey = EnvironmentColors.ToolWindowBackgroundColorKey;
+            Brushes.ToolWindowBackgroundBrushKey = EnvironmentColors.ToolWindowBackgroundBrushKey;
+            Brushes.ToolWindowBorderColorKey = EnvironmentColors.ToolWindowBorderColorKey;
+            Brushes.ToolWindowBorderBrushKey = EnvironmentColors.ToolWindowBorderBrushKey;
+            Brushes.ToolWindowButtonActiveGlyphBrushKey = EnvironmentColors.ToolWindowButtonActiveGlyphBrushKey;
+            Brushes.ToolWindowButtonDownBrushKey = EnvironmentColors.ToolWindowButtonDownBrushKey;
+            Brushes.ToolWindowButtonDownActiveGlyphBrushKey = EnvironmentColors.ToolWindowButtonDownActiveGlyphBrushKey;
+            Brushes.ToolWindowButtonDownBorderBrushKey = EnvironmentColors.ToolWindowButtonDownBorderBrushKey;
+            Brushes.ToolWindowButtonDownInactiveGlyphBrushKey = EnvironmentColors.ToolWindowButtonDownInactiveGlyphBrushKey;
+            Brushes.ToolWindowButtonHoverActiveBrushKey = EnvironmentColors.ToolWindowButtonHoverActiveBrushKey;
+            Brushes.ToolWindowButtonHoverActiveBorderBrushKey = EnvironmentColors.ToolWindowButtonHoverActiveBorderBrushKey;
+            Brushes.ToolWindowButtonHoverActiveGlyphBrushKey = EnvironmentColors.ToolWindowButtonHoverActiveGlyphBrushKey;
+            Brushes.ToolWindowButtonHoverInactiveBrushKey = EnvironmentColors.ToolWindowButtonHoverInactiveBrushKey;
+            Brushes.ToolWindowButtonHoverInactiveBorderBrushKey = EnvironmentColors.ToolWindowButtonHoverInactiveBorderBrushKey;
+            Brushes.ToolWindowButtonHoverInactiveGlyphBrushKey = EnvironmentColors.ToolWindowButtonHoverInactiveGlyphBrushKey;
+            Brushes.ToolWindowButtonInactiveBrushKey = EnvironmentColors.ToolWindowButtonInactiveBrushKey;
+            Brushes.ToolWindowButtonInactiveBorderBrushKey = EnvironmentColors.ToolWindowButtonInactiveBorderBrushKey;
+            Brushes.ToolWindowButtonInactiveGlyphBrushKey = EnvironmentColors.ToolWindowButtonInactiveGlyphBrushKey;
+            Brushes.ToolWindowTextBrushKey = EnvironmentColors.ToolWindowTextBrushKey;
+
             Brushes.UITextKey = VsBrushes.BrandedUITextKey;
             Brushes.WindowTextKey = VsBrushes.WindowTextKey;
             Brushes.WindowKey = VsBrushes.WindowKey;
@@ -103,8 +120,21 @@ namespace Microsoft.VisualStudio.R.Package.Wpf {
             Brushes.StatusBarTextBrushKey = EnvironmentColors.StatusBarTextBrushKey;
             Brushes.StatusBarTextColorKey = EnvironmentColors.StatusBarTextColorKey;
 
-            Brushes.SelectedItemActiveBrushKey = TreeViewColors.SelectedItemActiveBrushKey;
-            Brushes.SelectedItemActiveBrushKey = TreeViewColors.SelectedItemActiveColorKey;
+            Brushes.FailMessageTextBrushKey = TreeViewColors.ValidationSquigglesBrushKey;
+            // TODO: may need to pick a better color of specify custom key
+            Brushes.SuccessMessageTextBrushKey = ProgressBarColors.IndicatorFillBrushKey;
+            Brushes.ScrollBarBackgroundBrushKey = EnvironmentColors.ScrollBarBackgroundBrushKey;
+
+            Brushes.TreeViewBackgroundBrushKey = TreeViewColors.BackgroundBrushKey;
+            Brushes.TreeViewBackgroundTextBrushKey = TreeViewColors.BackgroundTextBrushKey;
+            Brushes.TreeViewSelectedItemActiveBrushKey = TreeViewColors.SelectedItemActiveBrushKey;
+            Brushes.TreeViewSelectedItemActiveTextBrushKey = TreeViewColors.SelectedItemActiveTextBrushKey;
+            Brushes.TreeViewSelectedItemInactiveBrushKey = TreeViewColors.SelectedItemInactiveBrushKey;
+            Brushes.TreeViewSelectedItemInactiveTextBrushKey = TreeViewColors.SelectedItemInactiveTextBrushKey;
+            Brushes.TreeViewGlyphBrushKey = TreeViewColors.GlyphBrushKey;
+            Brushes.TreeViewGlyphMouseOverBrushKey = TreeViewColors.GlyphMouseOverBrushKey;
+
+            Brushes.GridLineBrushKey = EnvironmentColors.GridLineBrushKey;
         }
 
         private static void OverrideFontKeys() {
@@ -116,12 +146,13 @@ namespace Microsoft.VisualStudio.R.Package.Wpf {
             FontKeys.EnvironmentBoldFontWeightKey = VsFonts.EnvironmentBoldFontWeightKey;
         }
 
-        private static void OverrideImageSources(IApplicationShell shell) {
+        private static void OverrideImageSources() {
             var color = VSColorTheme.GetThemedColor(EnvironmentColors.ToolWindowBackgroundColorKey);
             ImageSources.ImageBackground = new SolidColorBrush(Color.FromArgb(color.A, color.R, color.G, color.B));
         }
 
-        private static void OverrideStyleKeys() {
+        private static void OverrideStyleKeys()
+        {
             var comboBoxType = ExtensionsExplorerUIAssemblyLazy.Value.GetType("Microsoft.VisualStudio.ExtensionsExplorer.UI.AutomationComboBox");
             StyleKeys.ThemedComboStyleKey = new ComponentResourceKey(comboBoxType, "ThemedComboBoxStyle");
             StyleKeys.ScrollBarStyleKey = VsResourceKeys.ScrollBarStyleKey;
@@ -130,7 +161,8 @@ namespace Microsoft.VisualStudio.R.Package.Wpf {
             StyleKeys.TextBoxStyleKey = VsResourceKeys.TextBoxStyleKey;
         }
 
-        private static IDictionary<string, ThemeResourceKey> GetColorResources() {
+        private static IDictionary<string, ThemeResourceKey> GetColorResources()
+        {
             // use colors of VisualStudio UI.
             var colorResources = ExtensionsExplorerUIAssemblyLazy.Value.GetType("Microsoft.VisualStudio.ExtensionsExplorer.UI.ColorResources");
 
@@ -142,11 +174,11 @@ namespace Microsoft.VisualStudio.R.Package.Wpf {
         private static ImageSource GetImage(IVsImageService2 imageService, ImageMoniker imageMoniker) {
             var imageAttributes = new ImageAttributes {
                 ImageType = (uint)_UIImageType.IT_Bitmap,
-                Flags = (uint) _ImageAttributesFlags.IAF_RequiredFlags,
-                Format = (uint) _UIDataFormat.DF_WPF,
+                Flags = (uint)_ImageAttributesFlags.IAF_RequiredFlags,
+                Format = (uint)_UIDataFormat.DF_WPF,
                 LogicalHeight = 16,
                 LogicalWidth = 16,
-                StructSize = Marshal.SizeOf(typeof (ImageAttributes))
+                StructSize = Marshal.SizeOf(typeof(ImageAttributes))
             };
 
             IVsUIObject uiObject = imageService.GetImage(imageMoniker, imageAttributes);

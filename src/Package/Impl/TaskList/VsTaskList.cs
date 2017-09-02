@@ -5,9 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Diagnostics;
-using Microsoft.Languages.Editor.Composition;
+using Microsoft.Common.Core.Shell;
 using Microsoft.Languages.Editor.TaskList;
-using Microsoft.VisualStudio.R.Package.Shell;
 
 namespace Microsoft.VisualStudio.R.Package.TaskList {
     /// <summary>
@@ -16,12 +15,19 @@ namespace Microsoft.VisualStudio.R.Package.TaskList {
     /// </summary>
     [Export(typeof(IEditorTaskList))]
     public sealed class VsTaskList : IEditorTaskList {
-        private Dictionary<IEditorTaskListItemSource, VsTaskListProvider> _providerMap = new Dictionary<IEditorTaskListItemSource, VsTaskListProvider>();
+        private readonly ICoreShell _coreShell;
+        private readonly Dictionary<IEditorTaskListItemSource, VsTaskListProvider> 
+            _providerMap = new Dictionary<IEditorTaskListItemSource, VsTaskListProvider>();
+
+        [ImportingConstructor]
+        public VsTaskList(ICoreShell coreShell) {
+            _coreShell = coreShell;
+        }
 
         public void AddTaskSource(IEditorTaskListItemSource source) {
             Debug.Assert(!_providerMap.ContainsKey(source));
 
-            var provider = new VsTaskListProvider(source);
+            var provider = new VsTaskListProvider(source, _coreShell.Services);
             _providerMap[source] = provider;
         }
 
@@ -34,13 +40,8 @@ namespace Microsoft.VisualStudio.R.Package.TaskList {
             }
         }
 
-        internal static void StaticFlushTaskList() {
-            IEditorTaskList tasks = ComponentLocator<IEditorTaskList>.Import(VsAppShell.Current.CompositionService);
-            tasks.FlushTaskList();
-        }
-
         public void FlushTaskList() {
-            foreach (VsTaskListProvider provider in _providerMap.Values) {
+            foreach (var provider in _providerMap.Values) {
                 provider.FlushTasks();
                 provider.Refresh();
             }

@@ -7,6 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
+using Microsoft.Common.Core.Shell;
 using Microsoft.VisualStudio.R.Package.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 
@@ -23,17 +24,11 @@ namespace Microsoft.VisualStudio.R.Package.Interop {
         const int MAPI_DIALOG = 0x00000008;
         const int maxAttachments = 20;
 
-        public bool AddRecipientTo(string email) {
-            return AddRecipient(email, HowTo.MAPI_TO);
-        }
+        public bool AddRecipientTo(string email) => AddRecipient(email, HowTo.MAPI_TO);
 
-        public void AddAttachment(string strAttachmentFileName) {
-            _attachments.Add(strAttachmentFileName);
-        }
+        public void AddAttachment(string strAttachmentFileName) => _attachments.Add(strAttachmentFileName);
 
-        public int SendMailPopup(string strSubject, string strBody) {
-            return SendMail(strSubject, strBody, MAPI_LOGON_UI | MAPI_DIALOG | MAPI_DIALOG_MODELESS);
-        }
+        public int SendMailPopup(string strSubject, string strBody) => SendMail(strSubject, strBody, MAPI_LOGON_UI | MAPI_DIALOG | MAPI_DIALOG_MODELESS);
 
         class ThreadParam {
             public MapiMessage Message { get; set; }
@@ -47,7 +42,7 @@ namespace Microsoft.VisualStudio.R.Package.Interop {
 
         int SendMail(string subject, string body, int how) {
             IntPtr vsWindow;
-            IVsUIShell shell = VsAppShell.Current.GetGlobalService<IVsUIShell>(typeof(SVsUIShell));
+            IVsUIShell shell = VsAppShell.Current.GetService<IVsUIShell>(typeof(SVsUIShell));
             shell.GetDialogOwnerHwnd(out vsWindow);
 
             MapiMessage msg = new MapiMessage();
@@ -107,8 +102,9 @@ namespace Microsoft.VisualStudio.R.Package.Interop {
 
         IntPtr GetRecipients(out int recipCount) {
             recipCount = 0;
-            if (_recipients.Count == 0)
+            if (_recipients.Count == 0) {
                 return IntPtr.Zero;
+            }
 
             int size = Marshal.SizeOf(typeof(MapiRecipDesc));
             IntPtr intPtr = Marshal.AllocHGlobal(_recipients.Count * size);
@@ -125,12 +121,14 @@ namespace Microsoft.VisualStudio.R.Package.Interop {
 
         IntPtr GetAttachments(out int fileCount) {
             fileCount = 0;
-            if (_attachments == null)
+            if (_attachments == null) {
                 return IntPtr.Zero;
+            }
 
             if ((_attachments.Count <= 0) || (_attachments.Count >
-                maxAttachments))
+                maxAttachments)) {
                 return IntPtr.Zero;
+            }
 
             int size = Marshal.SizeOf(typeof(MapiFileDesc));
             IntPtr intPtr = Marshal.AllocHGlobal(_attachments.Count * size);
@@ -185,7 +183,7 @@ namespace Microsoft.VisualStudio.R.Package.Interop {
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-    public class MapiMessage {
+    class MapiMessage {
         public int reserved;
         public string subject;
         public string noteText;
@@ -204,7 +202,7 @@ namespace Microsoft.VisualStudio.R.Package.Interop {
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-    public class MapiFileDesc {
+    class MapiFileDesc {
         public int reserved;
         public int flags;
         public int position;
@@ -215,7 +213,7 @@ namespace Microsoft.VisualStudio.R.Package.Interop {
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-    public class MapiRecipDesc {
+    class MapiRecipDesc {
         public int reserved;
         public int recipClass;
         public string name;
@@ -226,7 +224,7 @@ namespace Microsoft.VisualStudio.R.Package.Interop {
     }
 
     // MAPI error codes
-    public enum MapiErrorCode {
+    enum MapiErrorCode {
         /// <summary>
         /// A recipient matched more than one of the recipient descriptor structures and MAPI_DIALOG was not set. No message was sent.
         /// </summary>

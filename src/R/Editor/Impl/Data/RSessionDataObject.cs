@@ -2,14 +2,12 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Common.Core;
 using Microsoft.R.DataInspection;
 using Microsoft.R.Host.Client;
-using Microsoft.R.Support.Settings;
 using static Microsoft.R.DataInspection.REvaluationResultProperties;
 
 namespace Microsoft.R.Editor.Data {
@@ -20,8 +18,9 @@ namespace Microsoft.R.Editor.Data {
         private static readonly char[] NameTrimChars = new char[] { '$' };
         private static readonly string HiddenVariablePrefix = ".";
 
+        private readonly bool _evaluateActiveBindings;
         private readonly object syncObj = new object();
-        private Task<IReadOnlyList<IRSessionDataObject>> _getChildrenTask = null;
+        private Task<IReadOnlyList<IRSessionDataObject>> _getChildrenTask;
 
         protected const int DefaultMaxReprLength = 100;
         protected const int DefaultMaxGrandChildren = 20;
@@ -30,14 +29,10 @@ namespace Microsoft.R.Editor.Data {
             MaxReprLength = DefaultMaxReprLength;
         }
 
-        /// <summary>
-        /// Create new instance of <see cref="DataEvaluation"/>
-        /// </summary>
-        /// <param name="evaluation">R session's evaluation result</param>
-        public RSessionDataObject(IREvaluationResultInfo evaluation, int? maxChildrenCount = null) : this() {
+        public RSessionDataObject(IREvaluationResultInfo evaluation, bool evaluateActiveBindings, int? maxChildrenCount = null) : this() {
             DebugEvaluation = evaluation;
-
             Name = DebugEvaluation.Name?.TrimStart(NameTrimChars);
+            _evaluateActiveBindings = evaluateActiveBindings;
 
             if (DebugEvaluation is IRValueInfo) {
                 var valueEvaluation = (IRValueInfo)DebugEvaluation;
@@ -58,7 +53,9 @@ namespace Microsoft.R.Editor.Data {
                 }
             }
 
-            if (Dimensions == null) Dimensions = new List<int>();
+            if (Dimensions == null) {
+                Dimensions = new List<long>();
+            }
 
             MaxChildrenCount = maxChildrenCount;
         }
@@ -77,9 +74,9 @@ namespace Microsoft.R.Editor.Data {
             if (valueInfo.Dim != null) {
                 Dimensions = valueInfo.Dim;
             } else if (valueInfo.Length.HasValue) {
-                Dimensions = new List<int>() { valueInfo.Length.Value, 1 };
+                Dimensions = new List<long>() { valueInfo.Length.Value, 1 };
             } else {
-                Dimensions = new List<int>();
+                Dimensions = new List<long>();
             }
         }
 
@@ -102,39 +99,38 @@ namespace Microsoft.R.Editor.Data {
         }
 
         protected virtual async Task<IReadOnlyList<IRSessionDataObject>> GetChildrenAsyncInternal() {
-            List<IRSessionDataObject> result = null;
-
             var valueEvaluation = DebugEvaluation as IRValueInfo;
             if (valueEvaluation == null) {
-                Debug.Assert(false, $"{nameof(RSessionDataObject)} result type is not {nameof(IRValueInfo)}");
-                return result;
+                // Failed to fetch children - for example, because the object is already gone.
+                return null;
             }
 
-            if (valueEvaluation.HasChildren) {
-                await TaskUtilities.SwitchToBackgroundThread();
+            await TaskUtilities.SwitchToBackgroundThread();
+            try {
+                if (valueEvaluation.HasChildren) {
+                    var properties =
+                        ExpressionProperty |
+                        AccessorKindProperty |
+                        TypeNameProperty |
+                        ClassesProperty |
+                        LengthProperty |
+                        SlotCountProperty |
+                        AttributeCountProperty |
+                        DimProperty |
+                        FlagsProperty |
+                        (_evaluateActiveBindings ? ComputedValueProperty : 0);
+                    var children = await valueEvaluation.DescribeChildrenAsync(properties, RValueRepresentations.Str(MaxReprLength), MaxChildrenCount);
+                    return EvaluateChildren(children);
+                }
+            } catch(REvaluationException) { }
 
-                REvaluationResultProperties properties =
-                    ExpressionProperty |
-                    AccessorKindProperty |
-                    TypeNameProperty |
-                    ClassesProperty |
-                    LengthProperty |
-                    SlotCountProperty |
-                    AttributeCountProperty |
-                    DimProperty |
-                    FlagsProperty |
-                    (RToolsSettings.Current.EvaluateActiveBindings ? ComputedValueProperty : 0);
-                var children = await valueEvaluation.DescribeChildrenAsync(properties, RValueRepresentations.Str(MaxReprLength), MaxChildrenCount);
-                result = EvaluateChildren(children);
-            }
-
-            return result;
+            return null;
         }
 
         protected virtual List<IRSessionDataObject> EvaluateChildren(IReadOnlyList<IREvaluationResultInfo> children) {
             var result = new List<IRSessionDataObject>();
-            for (int i = 0; i < children.Count; i++) {
-                result.Add(new RSessionDataObject(children[i], GetMaxChildrenCount(children[i])));
+            for (var i = 0; i < children.Count; i++) {
+                result.Add(new RSessionDataObject(children[i], _evaluateActiveBindings, GetMaxChildrenCount(children[i])));
             }
             return result;
         }
@@ -153,12 +149,12 @@ namespace Microsoft.R.Editor.Data {
         private string GetValue(IRValueInfo v) {
             var value = v.Representation;
             if (value != null) {
-                Match match = Regex.Match(value, DataFramePrefix);
+                var match = Regex.Match(value, DataFramePrefix);
                 if (match.Success) {
                     return match.Groups[1].Value.Trim();
                 }
             }
-            return value != null ? value.ConvertCharacterCodes() : value;
+            return value?.ConvertCharacterCodes();
         }
 
         #region IRSessionDataObject
@@ -173,17 +169,12 @@ namespace Microsoft.R.Editor.Data {
 
         public bool HasChildren { get; protected set; }
 
-        public IReadOnlyList<int> Dimensions { get; protected set; }
+        public IReadOnlyList<long> Dimensions { get; protected set; }
 
-        public bool IsHidden {
-            get { return Name.StartsWithOrdinal(HiddenVariablePrefix); }
-        }
+        public bool IsHidden => Name.StartsWithOrdinal(HiddenVariablePrefix);
 
-        public string Expression {
-            get {
-                return DebugEvaluation.Expression;
-            }
-        }
+        public string Expression => DebugEvaluation.Expression;
+
         #endregion
     }
 }

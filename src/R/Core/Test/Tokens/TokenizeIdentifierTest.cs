@@ -4,11 +4,14 @@
 using System.Diagnostics.CodeAnalysis;
 using FluentAssertions;
 using Microsoft.Languages.Core.Test.Tokens;
+using Microsoft.Languages.Core.Test.Utility;
 using Microsoft.R.Core.Tokens;
 using Microsoft.UnitTests.Core.XUnit;
+using Xunit;
 
 namespace Microsoft.R.Core.Test.Tokens {
     [ExcludeFromCodeCoverage]
+    [Category.R.Tokenizer]
     public class TokenizeIdentifierTest : TokenizeTestBase<RToken, RTokenType> {
         private readonly CoreTestFilesFixture _files;
 
@@ -17,7 +20,6 @@ namespace Microsoft.R.Core.Test.Tokens {
         }
 
         [Test]
-        [Category.R.Tokenizer]
         public void TokenizeIdentifierTest01() {
             var tokens = Tokenize("`_data_`", new RTokenizer());
 
@@ -28,7 +30,6 @@ namespace Microsoft.R.Core.Test.Tokens {
         }
 
         [Test]
-        [Category.R.Tokenizer]
         public void TokenizeIdentifierTest02() {
             var tokens = Tokenize("\"odd name\" <- 1", new RTokenizer());
 
@@ -39,7 +40,6 @@ namespace Microsoft.R.Core.Test.Tokens {
         }
 
         [Test]
-        [Category.R.Tokenizer]
         public void TokenizeIdentifierTest03() {
             var tokens = Tokenize("1 -> \"odd name\"", new RTokenizer());
 
@@ -50,9 +50,8 @@ namespace Microsoft.R.Core.Test.Tokens {
         }
 
         [Test]
-        [Category.R.Tokenizer]
-        public void TokenizeIdentifierLogicalTest01() {
-            var tokens = this.Tokenize("1 <- F(~x)", new RTokenizer());
+        public void IdentifierLogical() {
+            var tokens = Tokenize("1 <- F(~x)", new RTokenizer());
 
             tokens.Should().Equal(new[] {
                 RTokenType.Number,
@@ -65,22 +64,24 @@ namespace Microsoft.R.Core.Test.Tokens {
             }, (token, tokenType) => token.TokenType == tokenType);
         }
 
-        [Test]
-        [Category.R.Tokenizer]
-        public void TokenizeIdentifierLogicalTest02() {
-            var tokens = Tokenize("1 <- F", new RTokenizer());
-
-            tokens.Should().Equal(new [] {
-                RTokenType.Number,
-                RTokenType.Operator,
-                RTokenType.Logical,
-            }, (token, tokenType) => token.TokenType == tokenType);
+        [CompositeTest]
+        [InlineData("1 <- F", 2, RTokenType.Logical)]
+        [InlineData("F <- 1", 0, RTokenType.Identifier)]
+        [InlineData("a -> F", 2, RTokenType.Identifier)]
+        [InlineData("F = 1", 0, RTokenType.Identifier)]
+        [InlineData("F = 2", 0, RTokenType.Identifier)]
+        [InlineData("F =<- 2", 0, RTokenType.Identifier)]
+        [InlineData("T = T", 0, RTokenType.Identifier)]
+        [InlineData("T = T", 2, RTokenType.Logical)]
+        [InlineData("F -> T", 0, RTokenType.Logical)]
+        [InlineData("F -> T", 2, RTokenType.Identifier)]
+        public void IdentifierLogicals(string input, int tokenIndex, RTokenType tokenType) {
+            var tokens = Tokenize(input, new RTokenizer());
+            tokens[tokenIndex].TokenType.Should().Be(tokenType);
         }
 
         [Test]
-        [Category.R.Tokenizer]
-        public void Tokenize_IdentifiersFile() {
-            TokenizeFiles.TokenizeFile(_files, @"Tokenization\Identifiers.r");
-        }
+        public void Tokenize_IdentifiersFile() 
+            => TokenizeFiles.TokenizeFile<RToken, RTokenType, RTokenizer>(_files, @"Tokenization\Identifiers.r", "R");
     }
 }

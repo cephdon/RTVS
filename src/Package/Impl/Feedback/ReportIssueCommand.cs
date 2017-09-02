@@ -7,20 +7,21 @@ using System.Globalization;
 using System.IO;
 using Microsoft.Common.Core.Logging;
 using Microsoft.Common.Core.OS;
+using Microsoft.Common.Core.Services;
 using Microsoft.VisualStudio.R.Package.Commands;
 using Microsoft.VisualStudio.R.Package.Logging;
 using Microsoft.VisualStudio.R.Packages.R;
 
 namespace Microsoft.VisualStudio.R.Package.Feedback {
     internal class ReportIssueCommand : PackageCommand {
-        private const string _url = @"http://go.microsoft.com/fwlink/?LinkID=760668&body={0}";
+        private const string _url = @"https://go.microsoft.com/fwlink/?LinkID=760668&body={0}";
         private readonly ILoggingPermissions _permissions;
         private readonly IProcessServices _pss;
 
-        public ReportIssueCommand(ILoggingPermissions permissions, IProcessServices pss)
+        public ReportIssueCommand(IServiceContainer services)
             : base(RGuidList.RCmdSetGuid, RPackageCommandId.icmdReportIssue) {
-            _permissions = permissions;
-            _pss = pss;
+            _permissions = services.GetService<ILoggingPermissions>();
+            _pss = services.GetService<IProcessServices>();
         }
 
         protected override void SetStatus() {

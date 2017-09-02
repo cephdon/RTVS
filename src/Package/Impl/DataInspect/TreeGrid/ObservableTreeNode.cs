@@ -12,7 +12,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Common.Core;
 using Microsoft.Common.Core.Collections;
-using Microsoft.Common.Wpf;
+using Microsoft.Common.Core.Shell;
+using Microsoft.R.Common.Wpf.Controls;
 using Microsoft.VisualStudio.R.Package.Shell;
 
 namespace Microsoft.VisualStudio.R.Package.DataInspect {
@@ -34,9 +35,7 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect {
         private IComparer<ObservableTreeNode> _comparer;
         private IComparer<ITreeNode> _modelComparer;
         private IComparer<ITreeNode> ModelComparer {
-            get {
-                return _modelComparer;
-            }
+            get => _modelComparer;
             set {
                 _modelComparer = value;
                 _comparer = Comparer<ObservableTreeNode>.Create((v1, v2) => _modelComparer.Compare(v1.Model, v2.Model));
@@ -48,16 +47,14 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect {
         /// true for non-leaf node, false for leaf node
         /// </summary>
         public bool HasChildren {
-            get { return _hasChildren; }
-            set { SetProperty<bool>(ref _hasChildren, value); }
+            get => _hasChildren;
+            set => SetProperty<bool>(ref _hasChildren, value);
         }
 
         private bool _isVisible = true;
         public bool IsVisible {
-            get { return _isVisible; }
-            set {
-                SetProperty(ref _isVisible, value);
-            }
+            get => _isVisible;
+            set => SetProperty(ref _isVisible, value);
         }
 
 
@@ -66,7 +63,7 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect {
         /// Indicate this node expand to show children
         /// </summary>
         public bool IsExpanded {
-            get { return _isExpanded; }
+            get => _isExpanded;
             set {
                 if (_isExpanded == value) {
                     return;
@@ -89,10 +86,8 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect {
         /// Visibility of this node
         /// </summary>
         public Visibility Visibility {
-            get { return _visibility; }
-            set {
-                SetProperty<Visibility>(ref _visibility, value);
-            }
+            get => _visibility;
+            set => SetProperty<Visibility>(ref _visibility, value);
         }
 
         /// <summary>
@@ -121,7 +116,7 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect {
         /// </summary>
         private ITreeNode _model;
         public ITreeNode Model {
-            get { return _model; }
+            get => _model;
             set {
                 var newModel = value;
 
@@ -146,8 +141,8 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect {
         /// Content when any error happens internally
         /// </summary>
         public object ErrorContent {
-            get { return _errorContent; }
-            set { SetProperty(ref _errorContent, value); }
+            get => _errorContent;
+            set => SetProperty(ref _errorContent, value);
         }
 
         /// <summary>
@@ -161,7 +156,7 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect {
 
             newItem.Parent = this;
 
-            int insertionIndex = this.Children.BinarySearch(newItem, _comparer);
+            var insertionIndex = this.Children.BinarySearch(newItem, _comparer);
             if (insertionIndex < 0) {
                 // BinarySearch returns bitwise complement if not found
                 insertionIndex = ~insertionIndex;
@@ -190,8 +185,17 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect {
                 child.Sort();
             }
         }
-
         #endregion
+
+        // For Accessibility: screen reader reads values returned by 'ToString()'
+        public override string ToString() => Description ?? base.ToString();
+
+        public string Description {
+            get {
+                var vm = Model.Content as VariableViewModel;
+                return vm != null ? Resources.VariableExplorer_EntryDescription.FormatInvariant(vm.Name, vm.TypeName, vm.Value) : null;
+            }
+        }
 
         #region private
 
@@ -209,7 +213,7 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect {
 
             try {
                 var nodes = await model.GetChildrenAsync(CancellationToken.None);
-                VsAppShell.Current.DispatchOnUIThread(
+                VsAppShell.Current.MainThread().Post(
                     () => UpdateChildren(nodes));
             } catch (Exception e) {
                 if (!(e is OperationCanceledException)) {
@@ -236,12 +240,12 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect {
             var sortedUpdate = update.ToList();
             sortedUpdate.Sort(_modelComparer);
 
-            int srcIndex = 0;
-            int updateIndex = 0;
+            var srcIndex = 0;
+            var updateIndex = 0;
 
             while (srcIndex < Children.Count) {
-                int sameUpdateIndex = -1;
-                for (int u = updateIndex; u < sortedUpdate.Count; u++) {
+                var sameUpdateIndex = -1;
+                for (var u = updateIndex; u < sortedUpdate.Count; u++) {
                     if (Children[srcIndex].Model.CanUpdateTo(sortedUpdate[u])) {
                         sameUpdateIndex = u;
                         break;
@@ -249,11 +253,11 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect {
                 }
 
                 if (sameUpdateIndex != -1) {
-                    int insertIndex = srcIndex;
-                    for (int i = updateIndex; i < sameUpdateIndex; i++) {
-                        var newItem = new ObservableTreeNode(sortedUpdate[i], _modelComparer);
-                        newItem.Parent = this;
-
+                    var insertIndex = srcIndex;
+                    for (var i = updateIndex; i < sameUpdateIndex; i++) {
+                        var newItem = new ObservableTreeNode(sortedUpdate[i], _modelComparer) {
+                            Parent = this
+                        };
                         Children.Insert(insertIndex++, newItem);
                         srcIndex++;
                     }
@@ -270,11 +274,11 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect {
             if (updateIndex < sortedUpdate.Count) {
                 Debug.Assert(srcIndex == Children.Count);
 
-                int insertIndex = srcIndex;
-                for (int i = updateIndex; i < sortedUpdate.Count; i++) {
-                    var newItem = new ObservableTreeNode(sortedUpdate[i], _modelComparer);
-                    newItem.Parent = this;
-
+                var insertIndex = srcIndex;
+                for (var i = updateIndex; i < sortedUpdate.Count; i++) {
+                    var newItem = new ObservableTreeNode(sortedUpdate[i], _modelComparer) {
+                        Parent = this
+                    };
                     Children.Insert(insertIndex++, newItem);
                 }
             }

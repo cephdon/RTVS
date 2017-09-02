@@ -4,19 +4,15 @@
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Threading;
+using Microsoft.Common.Core;
+using Microsoft.Common.Core.Services;
 using Microsoft.Common.Core.Shell;
 using Microsoft.Languages.Core.Utility;
-using Microsoft.Languages.Editor.Extensions;
-using Microsoft.Languages.Editor.Services;
-using Microsoft.R.Components.Extensions;
-using Microsoft.R.Core.AST;
-using Microsoft.R.Core.Parser;
+using Microsoft.Languages.Editor.Text;
 using Microsoft.R.Editor.Document;
-using Microsoft.R.Editor.Settings;
 using Microsoft.R.Editor.Tree;
-using Microsoft.R.Editor.Validation.Definitions;
 using Microsoft.R.Editor.Validation.Errors;
-using Microsoft.VisualStudio.Text;
 
 namespace Microsoft.R.Editor.Validation {
     /// <summary>
@@ -33,7 +29,7 @@ namespace Microsoft.R.Editor.Validation {
     /// </summary>
     public sealed class TreeValidator {
         private static readonly BooleanSwitch _traceValidation = new BooleanSwitch("traceRValidation", "Trace R validation events in debug window.");
-        private static int _validationDelay = 200;
+        private const int _validationDelay = 300;
 
         public BooleanSwitch TraceValidation => _traceValidation;
 
@@ -43,14 +39,17 @@ namespace Microsoft.R.Editor.Validation {
         /// Code that places items on the task list should be checking if 
         /// node that produced the error is still exist in the document.
         /// </summary>
-        internal ConcurrentQueue<IValidationError> ValidationResults { get; private set; }
+        public ConcurrentQueue<IValidationError> ValidationResults { get; }
 
-        private IEditorTree _editorTree;
-        private readonly ICoreShell _shell;
-        private bool _syntaxCheckEnabled = false;
-        private bool _validationStarted = false;
+        private readonly IREditorTree _editorTree;
+        private readonly IREditorSettings _settings;
+        private readonly IIdleTimeService _idleTime;
+        private readonly ValidatorAggregator _aggregator;
 
-        private bool _advisedToIdleTime = false;
+        private CancellationTokenSource _cts;
+        private bool _syntaxCheckEnabled;
+        private bool _lintCheckEnabled;
+        private bool _advisedToIdleTime;
         private DateTime _idleRequestTime = DateTime.UtcNow;
 
         /// <summary>
@@ -60,25 +59,25 @@ namespace Microsoft.R.Editor.Validation {
         public event EventHandler<EventArgs> Cleared;
 
         #region Constructors
-        public TreeValidator(IEditorTree editorTree, ICoreShell shell) {
+        public TreeValidator(IREditorTree editorTree, IServiceContainer services) {
 #if DEBUG
             TraceValidation.Enabled = false;
 #endif
 
             _editorTree = editorTree;
-
-            _editorTree.NodesRemoved += OnNodesRemoved;
             _editorTree.UpdateCompleted += OnTreeUpdateCompleted;
             _editorTree.Closing += OnTreeClose;
 
-            _shell = shell;
-
-            _syntaxCheckEnabled = IsSyntaxCheckEnabled(_editorTree.TextBuffer);
+            _settings = services.GetService<IREditorSettings>();
+            _idleTime = services.GetService<IIdleTimeService>();
 
             // Advise to settings changed *after* accessing the RSettings, 
             // since accessing the host application (VS) settings object may 
             // cause it fire Changed notification in some cases.
-            REditorSettings.Changed += OnSettingsChanged;
+            _settings.SettingsChanged += OnSettingsChanged;
+
+            _syntaxCheckEnabled = IsSyntaxCheckEnabled(_editorTree.EditorBuffer, _settings, out _lintCheckEnabled);
+            _lintCheckEnabled = _settings.LintOptions.Enabled;
 
             // We don't want to start validation right away since it may 
             // interfere with the editor perceived startup performance.
@@ -86,33 +85,16 @@ namespace Microsoft.R.Editor.Validation {
             StartValidationNextIdle();
             ValidationResults = new ConcurrentQueue<IValidationError>();
 
-            ServiceManager.AddService<TreeValidator>(this, editorTree.TextBuffer, shell);
+            editorTree.EditorBuffer.AddService(this);
+            _aggregator = new ValidatorAggregator(services);
         }
         #endregion
-
-        /// <summary>
-        /// Retrieves (or creates) the validator (syntax checker) 
-        /// for the document that is associated with the text buffer
-        /// </summary>
-        /// <param name="textBuffer">Text buffer</param>
-        /// <param name="editorTree"></param>
-        /// <param name="shell"></param>
-        public static TreeValidator EnsureFromTextBuffer(ITextBuffer textBuffer, IEditorTree editorTree, ICoreShell shell) {
-            TreeValidator validator = ServiceManager.GetService<TreeValidator>(textBuffer);
-            if (validator == null) {
-                validator = new TreeValidator(editorTree, shell);
-            }
-
-            return validator;
-        }
 
         /// <summary>
         /// Determines if background validation is currently in 
         /// progress (i.e. validation thread is running).
         /// </summary>
-        public bool IsValidationInProgress {
-            get { return _syntaxCheckEnabled && _validationStarted; }
-        }
+        public bool IsValidationInProgress => _syntaxCheckEnabled && _aggregator.Busy;
 
         private void StartValidationNextIdle() {
             if (_syntaxCheckEnabled) {
@@ -122,8 +104,9 @@ namespace Microsoft.R.Editor.Validation {
 
         #region Idle time handler
         private void OnIdle(object sender, EventArgs e) {
-            // Throttle validator idle a bit
-            if (TimeUtility.MillisecondsSinceUtc(_idleRequestTime) > _validationDelay) {
+            // Throttle validator idle a bit and check if previous 
+            // task is still running. If so, try next idle.
+            if (TimeUtility.MillisecondsSinceUtc(_idleRequestTime) > _validationDelay && !_aggregator.Busy) {
                 UnadviseFromIdle();
                 StartValidation();
             }
@@ -132,121 +115,101 @@ namespace Microsoft.R.Editor.Validation {
         private void AdviseToIdle() {
             if (!_advisedToIdleTime) {
                 _idleRequestTime = DateTime.UtcNow;
-
-                _shell.Idle += OnIdle;
+                _idleTime.Idle += OnIdle;
                 _advisedToIdleTime = true;
             }
         }
 
         private void UnadviseFromIdle() {
             if (_advisedToIdleTime) {
-                _shell.Idle -= OnIdle;
+                _idleTime.Idle -= OnIdle;
                 _advisedToIdleTime = false;
             }
         }
-
         #endregion
 
         #region Settings change handler
         private void OnSettingsChanged(object sender, EventArgs e) {
-            bool syntaxCheckWasEnabled = _syntaxCheckEnabled;
+            var syntaxCheckWasEnabled = _syntaxCheckEnabled;
+            var lintCheckWasEnabled = _lintCheckEnabled;
 
-            _syntaxCheckEnabled = IsSyntaxCheckEnabled(_editorTree.TextBuffer);
+            _syntaxCheckEnabled = IsSyntaxCheckEnabled(_editorTree.EditorBuffer, _settings, out _lintCheckEnabled);
+            _lintCheckEnabled &= _settings.LintOptions.Enabled;
 
-            if (syntaxCheckWasEnabled && !_syntaxCheckEnabled) {
+            var optionsChanged = (syntaxCheckWasEnabled ^ _syntaxCheckEnabled) ||
+                                 (lintCheckWasEnabled ^ _lintCheckEnabled);
+
+            if (optionsChanged) {
+                // This will clear error list so any errors that were produced
+                // by validators that were turned off will go away.
                 StopValidation();
-            } else if (!syntaxCheckWasEnabled && _syntaxCheckEnabled) {
-                StartValidation();
             }
 
+            StartValidation(); // Checks _syntaxCheckEnabled
             Cleared?.Invoke(this, EventArgs.Empty);
         }
         #endregion
 
-        public static bool IsSyntaxCheckEnabled(ITextBuffer textBuffer) {
-            var document = REditorDocument.FromTextBuffer(textBuffer);
-            if (document != null) {
-                var view = document.GetFirstView();
-                return view != null && view.IsRepl() ? REditorSettings.SyntaxCheckInRepl : REditorSettings.SyntaxCheck;
-            }
-            return false;
+        public static bool IsSyntaxCheckEnabled(IEditorBuffer editorBuffer, IREditorSettings settings, out bool lintEnabled) {
+            var document = editorBuffer.GetEditorDocument<IREditorDocument>();
+            lintEnabled = !document.IsRepl && settings.LintOptions.Enabled;
+            return document.IsRepl ? settings.SyntaxCheckInRepl : settings.SyntaxCheckEnabled;
         }
 
         private void StartValidation() {
             if (_syntaxCheckEnabled && _editorTree != null) {
-                _validationStarted = true;
-                QueueTreeForValidation();
+                // Transfer available errors from the tree right away
+                foreach (var e in _editorTree.AstRoot.Errors) {
+                    ValidationResults.Enqueue(new ValidationError(e, ErrorText.GetText(e.ErrorType), e.Location));
+                }
+                // Run all validators
+                _cts = new CancellationTokenSource();
+                var projected = IsProjectedBuffer(_editorTree.EditorBuffer);
+                _aggregator.RunAsync(_editorTree.AstRoot, projected, _lintCheckEnabled, ValidationResults, _cts.Token).DoNotWait();
             }
         }
 
+        private static bool IsProjectedBuffer(IEditorBuffer editorBuffer) {
+            var document = editorBuffer.GetEditorDocument<IREditorDocument>();
+            return document.IsRepl || document.PrimaryView?.EditorBuffer != editorBuffer;
+        }
+
         private void StopValidation() {
-            _validationStarted = false;
+            _cts?.Cancel();
 
             //  Empty the results queue
             while (!ValidationResults.IsEmpty) {
-                IValidationError error;
-                ValidationResults.TryDequeue(out error);
+                ValidationResults.TryDequeue(out IValidationError error);
             }
-
+            ClearResults();
             UnadviseFromIdle();
         }
 
         #region Tree event handlers
-
-        /// <summary>
-        /// Listens to 'nodes removed' event which fires when user
-        /// deletes text that generated AST nodes or pastes over
-        /// new content. This allows validator to remove related
-        /// errors from the task list quickly so they don't linger
-        /// until the next validation pass.
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void OnNodesRemoved(object sender, TreeNodesRemovedEventArgs e) {
-            if (_syntaxCheckEnabled) {
-                foreach (var node in e.Nodes) {
-                    ClearResultsForNode(node);
-                }
-            }
-        }
-
         private void OnTreeUpdateCompleted(object sender, TreeUpdatedEventArgs e) {
-            if (e.UpdateType == TreeUpdateType.NewTree) {
-                StopValidation();
-                StartValidationNextIdle();
-            }
+            // We run validation on all updates since there 
+            // may be whitespace checkers like lint
+            StopValidation();
+            StartValidationNextIdle();
         }
 
         private void OnTreeClose(object sender, EventArgs e) {
-            ServiceManager.RemoveService<TreeValidator>(_editorTree.TextBuffer);
+            _editorTree.EditorBuffer.RemoveService(this);
 
             StopValidation();
 
-            _editorTree.NodesRemoved -= OnNodesRemoved;
             _editorTree.UpdateCompleted -= OnTreeUpdateCompleted;
             _editorTree.Closing -= OnTreeClose;
 
-            _editorTree = null;
-
-            REditorSettings.Changed -= OnSettingsChanged;
+            _settings.SettingsChanged -= OnSettingsChanged;
+            _idleTime.Idle -= OnIdle;
         }
         #endregion
 
-        private void ClearResultsForNode(IAstNode node) {
-            foreach (var child in node.Children) {
-                ClearResultsForNode(child);
-            }
-
+        private void ClearResults() {
             // Adding sentinel will cause task list handler
             // to remove all results from the task list 
             ValidationResults.Enqueue(new ValidationSentinel());
-        }
-
-        private void QueueTreeForValidation() {
-            // Transfer available errors from the tree right away
-            foreach (ParseError e in _editorTree.AstRoot.Errors) {
-                ValidationResults.Enqueue(new ValidationError(e, ErrorText.GetText(e.ErrorType), e.Location));
-            }
         }
     }
 }

@@ -1,25 +1,25 @@
-﻿<ui:DialogWindow x:Class="Microsoft.VisualStudio.R.Package.DataInspect.DataImport.EnterUrl"
+﻿<ui:PlatformDialogWindow x:Class="Microsoft.VisualStudio.R.Package.DataInspect.DataImport.EnterUrl"
                  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-                 xmlns:ui="clr-namespace:Microsoft.VisualStudio.PlatformUI;assembly=Microsoft.VisualStudio.Shell.14.0"
                  xmlns:pkg="clr-namespace:Microsoft.VisualStudio.R.Package"
+                 xmlns:ui="clr-namespace:Microsoft.VisualStudio.R.Package.Wpf"
                  xmlns:wpf="clr-namespace:Microsoft.R.Wpf;assembly=Microsoft.R.Wpf"
-                 xmlns:components="clr-namespace:Microsoft.R.Components;assembly=Microsoft.R.Components"
+                 xmlns:components="clr-namespace:Microsoft.R.Components;assembly=Microsoft.R.Components.Windows"
                  ShowInTaskbar="False" WindowStyle="SingleBorderWindow"
                  mc:Ignorable="d" d:DesignWidth="500" MinWidth="700" MaxWidth="700" MinHeight="120" MaxHeight="120"
                  Background="{DynamicResource {x:Static wpf:Brushes.BackgroundBrushKey}}" 
                  Foreground="{DynamicResource {x:Static wpf:Brushes.UITextKey}}"
                  Title="{x:Static pkg:Resources.ImportData_EnterUrlTitle}"
                  FocusManager.FocusedElement="{Binding ElementName=UrlTextBox}">
-    <ui:DialogWindow.Resources>
+    <ui:PlatformDialogWindow.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <wpf:CommonResources />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
-    </ui:DialogWindow.Resources>
+    </ui:PlatformDialogWindow.Resources>
     <Grid VerticalAlignment="Top">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -31,8 +31,9 @@
                 <ColumnDefinition Width="6" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="0" Text="URL:" VerticalAlignment="Center" />
-            <TextBox Grid.Column="2" x:Name="UrlTextBox" MinHeight="20" VerticalContentAlignment="Center" />
+            <TextBlock Grid.Column="0" Text="{x:Static pkg:Resources.Label_URL}" VerticalAlignment="Center" />
+            <TextBox Grid.Column="2" x:Name="UrlTextBox" MinHeight="20" VerticalContentAlignment="Center"
+                     AutomationProperties.Name="{x:Static pkg:Resources.Label_URL}"/>
             <ProgressBar Grid.Column="2" x:Name="DownloadProgressBar" Visibility="Collapsed" Minimum="0" Maximum="100" />
         </Grid>
 
@@ -60,4 +61,4 @@
                     PreviewKeyUp="CancelButton_KeyUp" IsCancel="True" />
         </Grid>
     </Grid>
-</ui:DialogWindow>
+</ui:PlatformDialogWindow>

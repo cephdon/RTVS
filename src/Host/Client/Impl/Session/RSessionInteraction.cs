@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Microsoft.R.Host.Client.Session {
-    internal sealed class RSessionInteraction : IRSessionInteraction {
+    public sealed class RSessionInteraction : IRSessionInteraction {
         private readonly TaskCompletionSource<string> _requestTcs;
         private readonly Task _responseTask;
 
@@ -13,12 +13,7 @@ namespace Microsoft.R.Host.Client.Session {
         public int MaxLength { get; }
         public IReadOnlyList<IRContext> Contexts { get; }
 
-        public RSessionInteraction(
-            TaskCompletionSource<string> requestTcs,
-            Task responseTask,
-            string prompt,
-            int maxLength,
-            IReadOnlyList<IRContext> contexts) {
+        public RSessionInteraction(TaskCompletionSource<string> requestTcs, Task responseTask, string prompt, int maxLength, IReadOnlyList<IRContext> contexts) {
             _requestTcs = requestTcs;
             _responseTask = responseTask;
             Prompt = prompt;

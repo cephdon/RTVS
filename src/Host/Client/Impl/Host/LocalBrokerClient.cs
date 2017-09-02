@@ -6,21 +6,22 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
-using System.Net;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Common.Core;
+using Microsoft.Common.Core.Json;
 using Microsoft.Common.Core.Logging;
 using Microsoft.Common.Core.OS;
 using Microsoft.Common.Core.Services;
 using Microsoft.Common.Core.Threading;
-using Microsoft.R.Host.Client.BrokerServices;
 using Newtonsoft.Json;
 
 namespace Microsoft.R.Host.Client.Host {
-    internal sealed class LocalBrokerClient : BrokerClient {
-        private const string RHostBrokerExe = "Microsoft.R.Host.Broker.exe";
+    public sealed class LocalBrokerClient : BrokerClient {
+        private const string RHostBrokerExe = "Microsoft.R.Host.Broker.Windows.exe";
+        private const string RHostExe = "Microsoft.R.Host.exe";
         private const string InterpreterId = "local";
 
         private static readonly bool ShowConsole;
@@ -29,14 +30,13 @@ namespace Microsoft.R.Host.Client.Host {
         private readonly string _rhostDirectory;
         private readonly string _rHome;
         private readonly BinaryAsyncLock _connectLock = new BinaryAsyncLock();
-        private readonly ICoreServices _services;
+        private readonly IServiceContainer _services;
 
-        private Process _brokerProcess;
-        private int _disposed;
+        private IProcess _brokerProcess;
 
         static LocalBrokerClient() {
             // Allow "true" and non-zero integer to enable, otherwise disable.
-            string rtvsShowConsole = Environment.GetEnvironmentVariable("RTVS_SHOW_CONSOLE");
+            var rtvsShowConsole = Environment.GetEnvironmentVariable("RTVS_SHOW_CONSOLE");
             if (!bool.TryParse(rtvsShowConsole, out ShowConsole)) {
                 int n;
                 if (int.TryParse(rtvsShowConsole, out n) && n != 0) {
@@ -45,58 +45,63 @@ namespace Microsoft.R.Host.Client.Host {
             }
         }
 
-        public LocalBrokerClient(string name, string rHome, ICoreServices services, string rhostDirectory = null)
-            : base(name, new Uri(rHome), InterpreterId, _credentials, services.Log) {
-
-            _rhostDirectory = rhostDirectory ?? Path.GetDirectoryName(typeof(RHost).Assembly.GetAssemblyPath());
-            _rHome = rHome;
+        public LocalBrokerClient(string name, BrokerConnectionInfo connectionInfo, IServiceContainer services, IConsole console, string rhostDirectory = null)
+            : base(name, connectionInfo, _credentials, console, services) {
+            _rHome = connectionInfo.Uri.LocalPath;
             _services = services;
+            _rhostDirectory = rhostDirectory ?? Path.GetDirectoryName(typeof(RHost).GetTypeInfo().Assembly.GetAssemblyPath());
 
             IsVerified = true;
         }
 
-        public override async Task<RHost> ConnectAsync(string name, IRCallbacks callbacks, string rCommandLineArguments = null, int timeout = 3000,
-            CancellationToken cancellationToken = default(CancellationToken), ReentrancyToken reentrancyToken = default(ReentrancyToken)) {
-
-            await EnsureBrokerStartedAsync();
-            return await base.ConnectAsync(name, callbacks, rCommandLineArguments, timeout, cancellationToken);
+        public override async Task<RHost> ConnectAsync(HostConnectionInfo connectionInfo, CancellationToken cancellationToken = default(CancellationToken)) {
+            await EnsureBrokerStartedAsync(cancellationToken);
+            return await base.ConnectAsync(connectionInfo, cancellationToken);
         }
 
-        private async Task EnsureBrokerStartedAsync() {
+        private async Task EnsureBrokerStartedAsync(CancellationToken cancellationToken) {
             DisposableBag.ThrowIfDisposed();
             await TaskUtilities.SwitchToBackgroundThread();
 
-            var lockToken = await _connectLock.WaitAsync();
+            var lockToken = await _connectLock.WaitAsync(cancellationToken);
             try {
                 if (!lockToken.IsSet) {
-                    await ConnectToBrokerWorker();
-                    lockToken.Set();
+                    await ConnectToBrokerWorker(cancellationToken);
                 }
+                lockToken.Set();
             } finally {
                 lockToken.Reset();
             }
         }
 
-        private async Task ConnectToBrokerWorker() {
+        private async Task ConnectToBrokerWorker(CancellationToken cancellationToken) {
             Trace.Assert(_brokerProcess == null);
 
-            string rhostBrokerExe = Path.Combine(_rhostDirectory, RHostBrokerExe);
-            if (!_services.FileSystem.FileExists(rhostBrokerExe)) {
+            var rhostExe = Path.Combine(_rhostDirectory, RHostExe);
+            if (!_services.FileSystem().FileExists(rhostExe)) {
+                throw new RHostBinaryMissingException();
+            }
+
+            var rhostBrokerExe = Path.Combine(_rhostDirectory, RHostBrokerExe);
+            if (!_services.FileSystem().FileExists(rhostBrokerExe)) {
                 throw new RHostBrokerBinaryMissingException();
             }
 
-            Process process = null;
+            IProcess process = null;
             try {
-                string pipeName = Guid.NewGuid().ToString();
+                var pipeName = Guid.NewGuid().ToString();
+                var cts = new CancellationTokenSource(100000);
 
-                using (var serverUriPipe = new NamedPipeServerStream(pipeName, PipeDirection.In)) {
+                using (var processConnectCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, cts.Token))
+                using (var serverUriPipe = new NamedPipeServerStream(pipeName, PipeDirection.In, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous)) {
                     var psi = new ProcessStartInfo {
                         FileName = rhostBrokerExe,
                         UseShellExecute = false,
                         Arguments =
+                            $" --logging:logFolder \"{Log.Folder.TrimTrailingSlash()}\"" +
                             $" --logging:logHostOutput {Log.LogVerbosity >= LogVerbosity.Normal}" +
                             $" --logging:logPackets {Log.LogVerbosity == LogVerbosity.Traffic}" +
-                            $" --server.urls http://127.0.0.1:0" + // :0 means first available ephemeral port
+                            $" --urls http://127.0.0.1:0" + // :0 means first available ephemeral port
                             $" --startup:name \"{Name}\"" +
                             $" --startup:writeServerUrlsToPipe {pipeName}" +
                             $" --lifetime:parentProcessId {Process.GetCurrentProcess().Id}" +
@@ -111,16 +116,14 @@ namespace Microsoft.R.Host.Client.Host {
                     }
 
                     process = StartBroker(psi);
-                    process.EnableRaisingEvents = true;
 
-                    var cts = new CancellationTokenSource(100000);
                     process.Exited += delegate {
                         cts.Cancel();
                         _brokerProcess = null;
                         _connectLock.EnqueueReset();
                     };
 
-                    await serverUriPipe.WaitForConnectionAsync(cts.Token);
+                    await serverUriPipe.WaitForConnectionAsync(processConnectCts.Token);
 
                     var serverUriData = new MemoryStream();
                     try {
@@ -130,17 +133,17 @@ namespace Microsoft.R.Host.Client.Host {
                         // when the other side has finished writing and closed the pipe.
                         var buffer = new byte[0x1000];
                         do {
-                            int count = await serverUriPipe.ReadAsync(buffer, 0, buffer.Length, cts.Token);
+                            var count = await serverUriPipe.ReadAsync(buffer, 0, buffer.Length, cts.Token);
                             serverUriData.Write(buffer, 0, count);
                         } while (serverUriPipe.IsConnected);
                     } catch (OperationCanceledException) {
                         throw new RHostDisconnectedException("Timed out while waiting for broker process to report its endpoint URI");
                     }
 
-                    string serverUriStr = Encoding.UTF8.GetString(serverUriData.ToArray());
+                    var serverUriStr = Encoding.UTF8.GetString(serverUriData.ToArray());
                     Uri[] serverUri;
                     try {
-                        serverUri = JsonConvert.DeserializeObject<Uri[]>(serverUriStr);
+                        serverUri = Json.DeserializeObject<Uri[]>(serverUriStr);
                     } catch (JsonSerializationException ex) {
                         throw new RHostDisconnectedException($"Invalid JSON for endpoint URIs received from broker ({ex.Message}): {serverUriStr}");
                     }
@@ -151,9 +154,8 @@ namespace Microsoft.R.Host.Client.Host {
                     CreateHttpClient(serverUri[0]);
                 }
 
-                if (_disposed == 0) {
+                if (DisposableBag.TryAdd(DisposeBrokerProcess)) {
                     _brokerProcess = process;
-                    DisposableBag.Add(DisposeBrokerProcess);
                 }
             } finally {
                 if (_brokerProcess == null) {
@@ -167,15 +169,15 @@ namespace Microsoft.R.Host.Client.Host {
             }
         }
 
-        private Process StartBroker(ProcessStartInfo psi) {
-            var process = _services.ProcessServices.Start(psi);
+        private IProcess StartBroker(ProcessStartInfo psi) {
+            var process = _services.Process().Start(psi);
             process.WaitForExit(250);
             if (process.HasExited && process.ExitCode < 0) {
-                var message = ErrorCodeConverter.MessageFromErrorCode(process.ExitCode);
+                var message = _services.Process().MessageFromExitCode(process.ExitCode);
                 if (!string.IsNullOrEmpty(message)) {
-                    throw new RHostDisconnectedException(Resources.Error_UnableToStartBrokerException.FormatInvariant(message), new Win32Exception(message));
+                    throw new RHostDisconnectedException(Resources.Error_UnableToStartBrokerException.FormatInvariant(Name, message), new Win32Exception(message));
                 }
-                throw new RHostDisconnectedException(Resources.Error_UnableToStartBrokerException.FormatInvariant(process.ExitCode.ToString()), new Win32Exception(process.ExitCode));
+                throw new RHostDisconnectedException(Resources.Error_UnableToStartBrokerException.FormatInvariant(Name, process.ExitCode), new Win32Exception(process.ExitCode));
             }
             return process;
         }
@@ -187,11 +189,6 @@ namespace Microsoft.R.Host.Client.Host {
             }
 
             _brokerProcess?.Dispose();
-        }
-
-        protected override void Dispose(bool disposing) {
-            Interlocked.CompareExchange(ref _disposed, 1, 0);
-            base.Dispose(disposing);
         }
     }
 }

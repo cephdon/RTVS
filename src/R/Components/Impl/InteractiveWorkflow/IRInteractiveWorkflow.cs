@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
-using System.Threading.Tasks;
 using Microsoft.Common.Core.Shell;
 using Microsoft.R.Components.ConnectionManager;
 using Microsoft.R.Components.History;
@@ -14,14 +13,12 @@ namespace Microsoft.R.Components.InteractiveWorkflow {
     public interface IRInteractiveWorkflow : IDisposable {
         ICoreShell Shell { get; }
         IConnectionManager Connections { get; }
+        IConsole Console { get; }
         IRHistory History { get; }
-        IRSessionProvider RSessions { get; }
-        IRSession RSession { get; }
         IRPackageManager Packages { get; }
         IRPlotManager Plots { get; }
+        IRSessionProvider RSessions { get; }
+        IRSession RSession { get; }
         IRInteractiveWorkflowOperations Operations { get; }
-        IInteractiveWindowVisualComponent ActiveWindow { get; }
-
-        Task<IInteractiveWindowVisualComponent> GetOrCreateVisualComponent(IInteractiveWindowComponentContainerFactory componentContainerFactory, int instanceId = 0);
     }
 }

@@ -4,27 +4,13 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Common.Core;
 using Microsoft.R.Components.InteractiveWorkflow;
 using Microsoft.R.Host.Client;
 
 namespace Microsoft.R.Components.Plots {
     public interface IRPlotManager : IDisposable {
         IRInteractiveWorkflow InteractiveWorkflow { get; }
-
-        IRPlotDeviceVisualComponent GetOrCreateVisualComponent(IRPlotDeviceVisualComponentContainerFactory visualComponentContainerFactory, int instanceId);
-        IRPlotHistoryVisualComponent GetOrCreateVisualComponent(IRPlotHistoryVisualComponentContainerFactory visualComponentContainerFactory, int instanceId);
-
-        /// <summary>
-        /// Visual component for the global plot history, or <c>null</c> if it
-        /// hasn't been created yet.
-        /// </summary>
-        IRPlotHistoryVisualComponent HistoryVisualComponent { get; }
-
-        /// <summary>
-        /// Visual component for the plot device, or <c>null</c> if it hasn't
-        /// been created yey.
-        /// </summary>
-        IRPlotDeviceVisualComponent GetPlotVisualComponent(IRPlotDevice device);
 
         /// <summary>
         /// The active device. This is updated on every session mutated event
@@ -54,25 +40,32 @@ namespace Microsoft.R.Components.Plots {
         /// Process an incoming plot message from the host.
         /// </summary>
         /// <param name="plot"></param>
-        Task LoadPlotAsync(PlotMessage plot);
+        /// <param name="cancellationToken"></param>
+        Task LoadPlotAsync(PlotMessage plot, CancellationToken cancellationToken);
 
         /// <summary>
         /// Process an incoming locator message from the host.
         /// </summary>
         /// <param name="deviceId">Id of device whose locator function was called.</param>
-        /// <param name="ct"></param>
-        Task<LocatorResult> StartLocatorModeAsync(Guid deviceId, CancellationToken ct);
+        /// <param name="cancellationToken"></param>
+        Task<LocatorResult> StartLocatorModeAsync(Guid deviceId, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// End the locator mode with the specified result.
+        /// </summary>
+        void EndLocatorMode(IRPlotDevice device, LocatorResult result);
 
         /// <summary>
         /// Process an incoming device creation message from the host.
         /// This assigns the new device to an available visual component (creating one if necessary).
         /// </summary>
         /// <param name="deviceId">Id of device that is being created.</param>
+        /// <param name="cancellationToken"></param>
         /// <returns>
         /// Properties of the visual component assigned to the device. The host
         /// uses this to set the device size and resolution.
         /// </returns>
-        Task<PlotDeviceProperties> DeviceCreatedAsync(Guid deviceId);
+        Task<PlotDeviceProperties> DeviceCreatedAsync(Guid deviceId, CancellationToken cancellationToken);
 
         /// <summary>
         /// Process an incoming device destroy message from the host.
@@ -80,7 +73,8 @@ namespace Microsoft.R.Components.Plots {
         /// recycled for the next device that is created.
         /// </summary>
         /// <param name="deviceId">Id of device that is being destroyed.</param>
-        Task DeviceDestroyedAsync(Guid deviceId);
+        /// <param name="cancellationToken"></param>
+        Task DeviceDestroyedAsync(Guid deviceId, CancellationToken cancellationToken);
 
         /// <summary>
         /// Execute code in the session to remove all plots.
@@ -211,7 +205,7 @@ namespace Microsoft.R.Components.Plots {
         /// <exception cref="OperationCanceledException">
         /// The session was reset, etc. this can be silenced.
         /// </exception>
-        Task ExportToPdfAsync(IRPlot plot, string outputFilePath, double inchWidth, double inchHeight);
+        Task ExportToPdfAsync(IRPlot plot, string pdfDevice, string paper, string outputFilePath, double inchWidth, double inchHeight);
 
         /// <summary>
         /// Execute code in the session to change the active graphics device.
@@ -249,11 +243,5 @@ namespace Microsoft.R.Components.Plots {
         /// </summary>
         /// <returns></returns>
         IRPlot[] GetAllPlots();
-
-        /// <summary>
-        /// Add a visual component to the pool of available components.
-        /// </summary>
-        /// <param name="visualComponent">Available visual component.</param>
-        void RegisterVisualComponent(IRPlotDeviceVisualComponent visualComponent);
     }
 }

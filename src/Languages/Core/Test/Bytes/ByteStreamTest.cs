@@ -8,12 +8,12 @@ using Microsoft.UnitTests.Core.XUnit;
 
 namespace Microsoft.Languages.Core.Test.Bytes {
     [ExcludeFromCodeCoverage]
+    [Category.Languages.Core]
     public class ByteStreamTest {
         [Test]
-        [Category.Languages.Core]
         public void ByteStream_AdvanceTest() {
             byte[] text = { (byte)'a', (byte)'b', (byte)'c', (byte)'d', (byte)'e', };
-            ByteStream target = new ByteStream(text);
+            var target = new ByteStream(text);
             var actual = target.Advance(0);
             actual.Should().BeTrue();
             target.Position.Should().Be(0);
@@ -28,10 +28,9 @@ namespace Microsoft.Languages.Core.Test.Bytes {
         }
 
         [Test]
-        [Category.Languages.Core]
         public void ByteStream_CurrentStringEqualsToTest() {
             byte[] text = { (byte)'a', (byte)'b', (byte)'c', (byte)'d', (byte)'e', };
-            ByteStream target = new ByteStream(text);
+            var target = new ByteStream(text);
 
             var actual = target.Advance(0);
             actual.Should().BeTrue();
@@ -47,15 +46,15 @@ namespace Microsoft.Languages.Core.Test.Bytes {
         }
 
         [Test]
-        [Category.Languages.Core]
         public void ByteStream_IsAnsiLetterTest() {
-            byte[] text = new byte[256];
+            var text = new byte[256];
             int i;
 
-            for (i = 0; i < text.Length; i++)
+            for (i = 0; i < text.Length; i++) {
                 text[i] = (byte)i;
+            }
 
-            ByteStream target = new ByteStream(text);
+            var target = new ByteStream(text);
 
             for (i = 0; i < 'A'; i++) {
                 target.IsAnsiLetter().Should().BeFalse();
@@ -76,11 +75,10 @@ namespace Microsoft.Languages.Core.Test.Bytes {
         }
 
         [Test]
-        [Category.Languages.Core]
         public void ByteStream_IsCharAtTest() {
-            byte[] text = new byte[] { (byte)'a', (byte)'b', (byte)'c', (byte)'d', (byte)'e', };
-            ByteStream target = new ByteStream(text);
-            for (int i = 0; i < text.Length; i++) {
+            var text = new byte[] { (byte)'a', (byte)'b', (byte)'c', (byte)'d', (byte)'e', };
+            var target = new ByteStream(text);
+            for (var i = 0; i < text.Length; i++) {
                 target.IsCharAt(i, text[i]).Should().BeTrue();
             }
 
@@ -89,15 +87,15 @@ namespace Microsoft.Languages.Core.Test.Bytes {
         }
 
         [Test]
-        [Category.Languages.Core]
         public void ByteStream_IsDigitTest() {
-            byte[] text = new byte[256];
+            var text = new byte[256];
 
             int i;
-            for (i = 0; i < text.Length; i++)
+            for (i = 0; i < text.Length; i++) {
                 text[i] = (byte)i;
+            }
 
-            ByteStream target = new ByteStream(text);
+            var target = new ByteStream(text);
 
             i = 0;
             for (; i < '0'; i++) {
@@ -119,10 +117,9 @@ namespace Microsoft.Languages.Core.Test.Bytes {
         }
 
         [Test]
-        [Category.Languages.Core]
         public void ByteStream_IsEndOfStreamTest() {
-            byte[] text = new byte[] { (byte)'a', (byte)'b', (byte)'c', (byte)'d', (byte)'e', };
-            ByteStream target = new ByteStream(text);
+            var text = new byte[] { (byte)'a', (byte)'b', (byte)'c', (byte)'d', (byte)'e', };
+            var target = new ByteStream(text);
             target.IsEndOfStream().Should().BeFalse();
 
             target.Advance(1);
@@ -137,10 +134,9 @@ namespace Microsoft.Languages.Core.Test.Bytes {
         }
 
         [Test]
-        [Category.Languages.Core]
         public void ByteStream_IsNewLineCharTest() {
-            byte[] text = new byte[] { (byte)'a', (byte)'\r', (byte)'\n', (byte)'d', (byte)'e', };
-            ByteStream target = new ByteStream(text);
+            var text = new byte[] { (byte)'a', (byte)'\r', (byte)'\n', (byte)'d', (byte)'e', };
+            var target = new ByteStream(text);
 
             target.IsNewLineChar().Should().BeFalse();
             target.MoveToNextChar();
@@ -154,10 +150,9 @@ namespace Microsoft.Languages.Core.Test.Bytes {
         }
 
         [Test]
-        [Category.Languages.Core]
         public void ByteStream_IsWhiteSpaceTest() {
-            byte[] text = new byte[] { (byte)'a', (byte)'\r', (byte)'\n', (byte)'\t', (byte)' ', };
-            ByteStream target = new ByteStream(text);
+            var text = new byte[] { (byte)'a', (byte)'\r', (byte)'\n', (byte)'\t', (byte)' ', };
+            var target = new ByteStream(text);
 
             target.IsWhiteSpace().Should().BeFalse();
             target.MoveToNextChar();
@@ -171,10 +166,9 @@ namespace Microsoft.Languages.Core.Test.Bytes {
         }
 
         [Test]
-        [Category.Languages.Core]
         public void ByteStream_CurrentCharTest() {
-            byte[] text = new byte[] { (byte)'a', (byte)'b', (byte)'c', (byte)'d', (byte)'e', };
-            ByteStream target = new ByteStream(text);
+            var text = new byte[] { (byte)'a', (byte)'b', (byte)'c', (byte)'d', (byte)'e', };
+            var target = new ByteStream(text);
             target.CurrentChar.Should().Be((byte)'a');
 
             target.Advance(1);
@@ -189,10 +183,9 @@ namespace Microsoft.Languages.Core.Test.Bytes {
         }
 
         [Test]
-        [Category.Languages.Core]
         public void ByteStream_DistanceFromEndTest() {
             byte[] text = { (byte)'a', (byte)'b', (byte)'c', (byte)'d', (byte)'e', };
-            ByteStream target = new ByteStream(text);
+            var target = new ByteStream(text);
             target.DistanceFromEnd.Should().Be(5);
 
             target.Advance(1);
@@ -207,10 +200,9 @@ namespace Microsoft.Languages.Core.Test.Bytes {
         }
 
         [Test]
-        [Category.Languages.Core]
         public void ByteStream_LengthTest() {
             byte[] text = { (byte)'a', (byte)'b', (byte)'c', (byte)'d', (byte)'e', };
-            ByteStream target = new ByteStream(text);
+            var target = new ByteStream(text);
             target.Length.Should().Be(5);
 
             text = new byte[0];
@@ -219,12 +211,11 @@ namespace Microsoft.Languages.Core.Test.Bytes {
         }
 
         [Test]
-        [Category.Languages.Core]
         public void ByteStream_NextCharTest() {
             byte[] text = { (byte)'a', (byte)'b', (byte)'c', (byte)'d', (byte)'e', };
-            ByteStream target = new ByteStream(text);
+            var target = new ByteStream(text);
 
-            for (int i = 0; i < text.Length - 1; i++) {
+            for (var i = 0; i < text.Length - 1; i++) {
                 target.NextChar.Should().Be(text[i + 1]);
                 target.MoveToNextChar();
             }
@@ -233,10 +224,9 @@ namespace Microsoft.Languages.Core.Test.Bytes {
         }
 
         [Test]
-        [Category.Languages.Core]
         public void ByteStream_PositionTest() {
-            byte[] text = new byte[] { (byte)'a', (byte)'b', (byte)'c', (byte)'d', (byte)'e', };
-            ByteStream target = new ByteStream(text);
+            var text = new byte[] { (byte)'a', (byte)'b', (byte)'c', (byte)'d', (byte)'e', };
+            var target = new ByteStream(text);
             target.Position.Should().Be(0);
 
             target.Advance(1);
@@ -251,9 +241,8 @@ namespace Microsoft.Languages.Core.Test.Bytes {
         }
 
         [Test]
-        [Category.Languages.Core]
         public void ByteStream_StringEqualsTest() {
-            ByteStream bs = new ByteStream(new byte[0]);
+            var bs = new ByteStream(new byte[0]);
             bs.CurrentStringEqualsTo("", 0).Should().BeTrue();
             bs.CurrentStringEqualsTo("a", 0).Should().BeTrue();
             bs.CurrentStringEqualsTo("abc", 3).Should().BeFalse();

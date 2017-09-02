@@ -13,7 +13,6 @@ namespace Microsoft.R.Components.InteractiveWorkflow {
         bool IsDebugging { get; }
 
         event EventHandler EnterBreakMode;
-
         event EventHandler LeaveBreakMode;
     }
 }

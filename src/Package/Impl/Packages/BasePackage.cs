@@ -9,8 +9,8 @@ using System.Linq;
 using EnvDTE;
 using EnvDTE80;
 using Microsoft.Common.Core.Disposables;
-using Microsoft.Languages.Editor.Tasks;
-using Microsoft.VisualStudio.CommandBars;
+using Microsoft.Common.Core.Shell;
+using Microsoft.R.Components.Settings;
 using Microsoft.VisualStudio.ProjectSystem.FileSystemMirroring.Shell;
 using Microsoft.VisualStudio.R.Package.Definitions;
 using Microsoft.VisualStudio.R.Package.Shell;
@@ -22,6 +22,8 @@ namespace Microsoft.VisualStudio.R.Package.Packages {
         where TLanguageService : class, new() {
         private readonly IList<IDisposable> _disposables = new List<IDisposable>();
         private Dictionary<IVsProjectGenerator, uint> _projectFileGenerators;
+        private RToolbar _toolbar;
+
         protected abstract IEnumerable<IVsEditorFactory> CreateEditorFactories();
         protected virtual IEnumerable<IVsProjectGenerator> CreateProjectFileGenerators() { return new IVsProjectGenerator[0]; }
         protected virtual IEnumerable<IVsProjectFactory> CreateProjectFactories() { return new IVsProjectFactory[0]; }
@@ -63,26 +65,26 @@ namespace Microsoft.VisualStudio.R.Package.Packages {
                 menuCommandService.AddCommand(commmand);
             }
 
-            var dte = VsAppShell.Current.GetGlobalService<DTE2>(typeof(DTE));
-            var cbs = (CommandBars.CommandBars)dte?.CommandBars;
-            Debug.Assert(cbs != null, "Unable to find R Toolbar");
-
-            var cb = cbs["R Toolbar"];
-            Debug.Assert(cb != null, "Unable to find R Toolbar");
-            if (cb != null) {
-                cb.Visible = true;
-            }
+            var settings = VsAppShell.Current.GetService<IRSettings>();
+            var dte = VsAppShell.Current.GetService<DTE2>(typeof(DTE));
+            _toolbar = new RToolbar(dte, settings);
+            _toolbar.Show();
         }
 
-        protected void AdviseExportedWindowFrameEvents<T>() where T : IVsWindowFrameEvents {
-            var windowFrameEvents = VsAppShell.Current.ExportProvider.GetExportedValue<T>();
+        protected override int QueryClose(out bool canClose) {
+            _toolbar.SaveState();
+            return base.QueryClose(out canClose);
+        }
+
+        protected void AdviseExportedWindowFrameEvents<T>() where T : class {
+            var windowFrameEvents = VsAppShell.Current.GetService<T>() as IVsWindowFrameEvents;
             var shell = (IVsUIShell7)GetService(typeof(SVsUIShell));
             var cookie = shell.AdviseWindowFrameEvents(windowFrameEvents);
             _disposables.Add(Disposable.Create(() => shell.UnadviseWindowFrameEvents(cookie)));
         }
 
-        protected void AdviseExportedDebuggerEvents<T>() where T : IVsDebuggerEvents {
-            var debuggerEvents = VsAppShell.Current.ExportProvider.GetExportedValue<T>();
+        protected void AdviseExportedDebuggerEvents<T>() where T : class {
+            var debuggerEvents = VsAppShell.Current.GetService<T>() as IVsDebuggerEvents;
             var debugger = (IVsDebugger)GetService(typeof(IVsDebugger));
 
             uint cookie;
@@ -149,3 +151,4 @@ namespace Microsoft.VisualStudio.R.Package.Packages {
         }
     }
 }
+

@@ -3,7 +3,6 @@
 
 using System;
 using System.ComponentModel;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UnitTests.Core.Threading;
@@ -49,16 +48,14 @@ namespace Microsoft.UnitTests.Core.XUnit {
                 .AddAfterStartingBeforeFinished(new ExecuteBeforeAfterAttributesMessageBusInjection(Method, TestMethod.TestClass.Class));
 
             var testMethodArguments = GetTestMethodArguments();
-            var runner = constructorArguments.Any(a => a is IMethodFixture)
-                ? new TestCaseRunnerWithMethodFixtures(this, DisplayName, SkipReason, constructorArguments, testMethodArguments, messageBus, aggregator, cancellationTokenSource)
-                : new TestCaseRunner(this, DisplayName, SkipReason, constructorArguments, testMethodArguments, messageBus, aggregator, cancellationTokenSource);
+            var runner = new TestCaseRunner(this, DisplayName, SkipReason, constructorArguments, testMethodArguments, messageBus, aggregator, cancellationTokenSource);
 
             if (ThreadType == ThreadType.UI) {
                 return UIThreadHelper.Instance.Invoke(runner.RunAsync);
             }
 
             messageBusOverride.AddAfterStartingBeforeFinished(new VerifyGlobalProviderMessageBusInjection());
-            return runner.RunAsync();
+            return ThreadType == ThreadType.Background ? Task.Run(() => runner.RunAsync()) : runner.RunAsync();
         }
 
         protected virtual object[] GetTestMethodArguments() => TestMethodArguments;

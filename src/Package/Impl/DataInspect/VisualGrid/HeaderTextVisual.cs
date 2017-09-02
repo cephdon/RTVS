@@ -29,11 +29,11 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect {
         }
         #endregion
 
-        public HeaderTextVisual(int columnIndex) {
+        public HeaderTextVisual(long columnIndex) {
             ColumnIndex = columnIndex;
         }
 
-        public int ColumnIndex { get; }
+        public long ColumnIndex { get; }
 
         /// <summary>
         /// Name of the column
@@ -67,11 +67,11 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect {
                     break;
 
                 case SortOrderType.Ascending:
-                    _arrowChar = ArrowDown;
+                    _arrowChar = ArrowUp;
                     break;
 
                 case SortOrderType.Descending:
-                    _arrowChar = ArrowUp;
+                    _arrowChar = ArrowDown;
                     break;
             }
             Invalidate();

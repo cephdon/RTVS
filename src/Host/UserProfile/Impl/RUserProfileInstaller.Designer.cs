@@ -37,9 +37,9 @@ namespace Microsoft.R.Host.UserProfile {
             rUserProfileProcessInstaller.Username = null;
 
             // If you make changes here make sure you edit the product.wxs and RUserProfileService.Designer.cs
-            rUserProfileServiceInstaller.ServiceName = "RUserProfileService";
-            rUserProfileServiceInstaller.DisplayName = "R User Profile Service";
-            rUserProfileServiceInstaller.Description = "Creates Windows User profile for users connecting via R Host Broker";
+            rUserProfileServiceInstaller.ServiceName = Resources.Text_ServiceName;
+            rUserProfileServiceInstaller.DisplayName = Resources.Text_ServiceDisplayName;
+            rUserProfileServiceInstaller.Description = Resources.Text_ServiceDescription;
 
             Installers.AddRange(new System.Configuration.Install.Installer[] {
             rUserProfileProcessInstaller,

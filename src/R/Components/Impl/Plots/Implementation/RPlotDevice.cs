@@ -4,10 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Windows.Media.Imaging;
 
 namespace Microsoft.R.Components.Plots.Implementation {
-    internal class RPlotDevice : IRPlotDevice {
+    public sealed class RPlotDevice : IRPlotDevice {
         private readonly List<IRPlot> _plots;
         private int _deviceNum;
         private bool _locatorMode;
@@ -28,9 +27,7 @@ namespace Microsoft.R.Components.Plots.Implementation {
         public Guid DeviceId { get; }
 
         public int DeviceNum {
-            get {
-                return _deviceNum;
-            }
+            get => _deviceNum;
 
             set {
                 if (value != _deviceNum) {
@@ -41,10 +38,7 @@ namespace Microsoft.R.Components.Plots.Implementation {
         }
 
         public bool LocatorMode {
-            get {
-                return _locatorMode;
-            }
-
+            get => _locatorMode;
             set {
                 if (value != _locatorMode) {
                     _locatorMode = value;
@@ -54,18 +48,14 @@ namespace Microsoft.R.Components.Plots.Implementation {
         }
 
         public int PlotCount { get; private set; }
-
         public int ActiveIndex { get; private set; }
 
         public IRPlot ActivePlot => ActiveIndex >= 0 ? _plots[ActiveIndex] : null;
-
         public int PixelWidth { get; set; } = -1;
-
         public int PixelHeight { get; set; } = -1;
-
         public int Resolution { get; set; } = -1;
 
-        public void AddOrUpdate(Guid plotId, BitmapImage image) {
+        public void AddOrUpdate(Guid plotId, object image) {
             var plot = _plots.SingleOrDefault(p => p.PlotId == plotId);
             if (plot == null) {
                 plot = new RPlot(this, plotId, image);
@@ -101,12 +91,7 @@ namespace Microsoft.R.Components.Plots.Implementation {
             Cleared?.Invoke(this, new RPlotEventArgs(null));
         }
 
-        public IRPlot GetPlotAt(int index) {
-            return _plots[index];
-        }
-
-        public IRPlot Find(Guid plotId) {
-            return _plots.SingleOrDefault(p => p.PlotId == plotId);
-        }
+        public IRPlot GetPlotAt(int index) => _plots[index];
+        public IRPlot Find(Guid plotId) => _plots.SingleOrDefault(p => p.PlotId == plotId);
     }
 }

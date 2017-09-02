@@ -5,62 +5,64 @@ using System;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Common.Core;
 using Microsoft.Common.Core.Disposables;
 using Microsoft.Common.Core.Security;
+using Microsoft.Common.Core.Services;
 using Microsoft.Common.Core.Threading;
 using Microsoft.R.Host.Client.BrokerServices;
-using static Microsoft.R.Host.Client.NativeMethods;
 
 namespace Microsoft.R.Host.Client.Host {
     internal class RemoteCredentialsDecorator : ICredentialsDecorator {
-        private readonly ISecurityService _securityService;
-        private readonly Credentials _credentials = new Credentials();
-        private readonly AutoResetEvent _credentialsValidated = new AutoResetEvent(true);
-        private readonly string _authority;
+        private readonly IServiceContainer _services;
+        private volatile Credentials _credentials;
         private readonly AsyncReaderWriterLock _lock;
-        private bool _credentialsAreValid;
+        private readonly string _authority;
+        private readonly string _workspaceName;
 
-        public RemoteCredentialsDecorator(Uri brokerUri, ISecurityService securityService) {
-            _securityService = securityService;
-            _authority = new UriBuilder { Scheme = brokerUri.Scheme, Host = brokerUri.Host, Port = brokerUri.Port }.ToString();
+        public RemoteCredentialsDecorator(string credentialAuthority, string workspaceName, IServiceContainer services) {
+            _services = services;
+            _authority = credentialAuthority;
             _lock = new AsyncReaderWriterLock();
-            _credentialsAreValid = true;
+            _workspaceName = workspaceName;
         }
 
-        public NetworkCredential GetCredential(Uri uri, string authType) => new NetworkCredential(_credentials.UserName, _credentials.Password);
+        public NetworkCredential GetCredential(Uri uri, string authType) {
+            var credentials = _credentials;
+            return credentials != null ? new NetworkCredential(credentials.UserName, credentials.Password.ToUnsecureString()) : new NetworkCredential();
+        }
 
         public async Task<IDisposable> LockCredentialsAsync(CancellationToken cancellationToken = default(CancellationToken)) {
-            Credentials credentials;
-
             // If there is already a LockCredentialsAsync request for which there hasn't been a validation yet, wait until it completes.
             // This can happen when two sessions are being created concurrently, and we don't want to pop the credential prompt twice -
             // the first prompt should be validated and saved, and then the same credentials will be reused for the second session.
             var token = await _lock.WriterLockAsync(cancellationToken);
+
+            await _services.MainThread().SwitchToAsync(cancellationToken);
+
             try {
-                var invalidateStoredCredentials = !Volatile.Read(ref _credentialsAreValid);
-                credentials = await _securityService.GetUserCredentialsAsync(_authority, invalidateStoredCredentials);
-            } catch (Exception) {
+                var credentials = _credentials ?? _services.Security().GetUserCredentials(_authority, _workspaceName);
+                _credentials = credentials;
+            } catch (Exception ex) when (!ex.IsCriticalException() && !(ex is OperationCanceledException)) {
+                // TODO: provide better error message
+                //_services.GetService<IConsole>().WriteErrorLine(Invariant($"{Microsoft.Common.Core.Resources.Error_CredReadFailed} {ex.Message}"));
                 token.Dispose();
-                throw;
+                return Disposable.Empty;
             }
 
-            _credentials.UserName = credentials.UserName;
-            _credentials.Password = credentials.Password;
-            Volatile.Write(ref _credentialsAreValid, true);
-
             return Disposable.Create(() => {
-                CredUIConfirmCredentials(_authority, Volatile.Read(ref _credentialsAreValid));
                 token.Dispose();
             });
         }
 
         public void InvalidateCredentials() {
-            Volatile.Write(ref _credentialsAreValid, false);
-        }
-
-        public void OnCredentialsValidated(bool isValid) {
-            CredUIConfirmCredentials(_authority, isValid);
-            _credentialsValidated.Set();
+            _credentials = null;
+            try {
+                _services.Security().DeleteCredentials(_authority);
+            } catch(Exception ex) when (!ex.IsCriticalException()) {
+                // TODO: provide better error message
+                //_console.WriteErrorLine(Invariant($"{Common.Core.Resources.Error_CredWriteFailed} {ex.Message}"));
+            }
         }
     }
 }

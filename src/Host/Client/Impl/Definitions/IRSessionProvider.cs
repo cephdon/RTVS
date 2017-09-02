@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Common.Core.Security;
 using Microsoft.R.Host.Client.Host;
 
 namespace Microsoft.R.Host.Client {
@@ -13,42 +14,36 @@ namespace Microsoft.R.Host.Client {
         event EventHandler BrokerChangeFailed;
         event EventHandler BrokerChanged;
         event EventHandler<BrokerStateChangedEventArgs> BrokerStateChanged;
+        event EventHandler<HostLoadChangedEventArgs> HostLoadChanged;
+        event EventHandler BeforeDisposed;
 
+        bool HasBroker { get; }
         bool IsConnected { get; }
         IBrokerClient Broker { get; }
 
-        IRSession GetOrCreate(Guid guid);
+        IRSession GetOrCreate(string sessionId);
         IEnumerable<IRSession> GetSessions();
-
-        /// <summary>
-        /// Creates <see cref="IRSessionEvaluation"/> for R expressions to be evaluated
-        /// Expressions are evaluated in a separate <see cref="IRSession"/>, no artifacts will be preserved after evaluation
-        /// </summary>
-        /// <param name="hostFactory"></param>
-        /// <param name="startupInfo"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        Task<IRSessionEvaluation> BeginEvaluationAsync(RHostStartupInfo startupInfo, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Tests connection to the broker without changing current one.
         /// </summary>
         /// <param name="name">Name of the broker. Will be displayed in REPL.</param>
-        /// <param name="path">Either a local path to the R binary or a URL to the broker.</param>
+        /// <param name="connectionInfo">Either a local path to the R binary or a URL to the broker + broker connection parameters</param>
         /// <param name="cancellationToken"></param>
-        Task TestBrokerConnectionAsync(string name, string path, CancellationToken cancellationToken = default(CancellationToken));
+        Task TestBrokerConnectionAsync(string name, BrokerConnectionInfo connectionInfo = default(BrokerConnectionInfo), CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// 
         /// </summary>
         /// <param name="name">Name of the broker. Will be displayed in REPL.</param>
-        /// <param name="path">Either a local path to the R binary or a URL to the broker.</param>
+        /// <param name="connectionInfo">Either a local path to the R binary or a URL to the broker + broker connection parameters</param>
         /// <param name="cancellationToken"></param>
-        Task<bool> TrySwitchBrokerAsync(string name, string path = null, CancellationToken cancellationToken = default(CancellationToken));
+        Task<bool> TrySwitchBrokerAsync(string name, BrokerConnectionInfo connectionInfo = default(BrokerConnectionInfo), CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
-        /// Displays broker machine and process information
+        /// Removes current broker, switching all sessions to the disconnected state
         /// </summary>
-        void PrintBrokerInformation();
+        /// <param name="cancellationToken"></param>
+        Task RemoveBrokerAsync(CancellationToken cancellationToken = default(CancellationToken));
     }
 }

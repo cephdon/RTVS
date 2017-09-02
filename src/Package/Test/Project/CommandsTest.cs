@@ -9,13 +9,11 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using FluentAssertions;
 using Microsoft.Common.Core.OS;
-using Microsoft.Common.Core.Test.Fakes.Shell;
-using Microsoft.Common.Core.Services;
+using Microsoft.Common.Core.Shell;
 using Microsoft.R.Components.ConnectionManager;
 using Microsoft.R.Components.History;
 using Microsoft.R.Components.PackageManager;
 using Microsoft.R.Components.Test.Fakes.InteractiveWindow;
-using Microsoft.R.Host.Client.Session;
 using Microsoft.UnitTests.Core.XUnit;
 using Microsoft.VisualStudio.ProjectSystem;
 using Microsoft.VisualStudio.R.Package.Commands;
@@ -24,9 +22,6 @@ using Microsoft.VisualStudio.R.Package.Shell;
 using Microsoft.VisualStudio.R.Package.Test.FakeFactories;
 using NSubstitute;
 using Xunit;
-#if VS14
-using Microsoft.VisualStudio.ProjectSystem.Designers;
-#endif
 using static Microsoft.UnitTests.Core.Threading.UIThreadTools;
 
 namespace Microsoft.VisualStudio.R.Package.Test.Repl {
@@ -36,11 +31,10 @@ namespace Microsoft.VisualStudio.R.Package.Test.Repl {
         private readonly TestRInteractiveWorkflowProvider _interactiveWorkflowProvider;
 
         public ProjectCommandsTest() {
-            var sessionProvider = new RSessionProvider(TestCoreServices.CreateReal());
-            var connectionsProvider = VsAppShell.Current.ExportProvider.GetExportedValue<IConnectionManagerProvider>();
-            var historyProvider = VsAppShell.Current.ExportProvider.GetExportedValue<IRHistoryProvider>();
-            var packagesProvider = VsAppShell.Current.ExportProvider.GetExportedValue<IRPackageManagerProvider>();
-            _interactiveWorkflowProvider = TestRInteractiveWorkflowProviderFactory.Create(nameof(ProjectCommandsTest), sessionProvider, connectionsProvider, historyProvider, packagesProvider);
+            var connectionsProvider = VsAppShell.Current.GetService<IConnectionManagerProvider>();
+            var historyProvider = VsAppShell.Current.GetService<IRHistoryProvider>();
+            var packagesProvider = VsAppShell.Current.GetService<IRPackageManagerProvider>();
+            _interactiveWorkflowProvider = TestRInteractiveWorkflowProviderFactory.Create(connectionsProvider, historyProvider, packagesProvider);
         }
 
         public void Dispose() {
@@ -98,8 +92,8 @@ namespace Microsoft.VisualStudio.R.Package.Test.Repl {
                 c.Args()[0].Should().Be(folder);
             });
 
-            var cs = Substitute.For<ICoreServices>();
-            cs.ProcessServices.Returns(ps);
+            var cs = Substitute.For<ICoreShell>();
+            cs.Process().Returns(ps);
 
             var cmd = new OpenCommandPromptCommand(cs);
             CheckSingleNodeCommandStatus(cmd, RPackageCommandId.icmdOpenCmdPromptHere, nodes1, nodes2);

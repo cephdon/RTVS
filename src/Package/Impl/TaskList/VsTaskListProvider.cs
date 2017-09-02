@@ -3,8 +3,9 @@
 
 using System;
 using System.Collections.Generic;
+using Microsoft.Common.Core.Services;
+using Microsoft.Common.Core.Shell;
 using Microsoft.Languages.Editor.TaskList;
-using Microsoft.VisualStudio.R.Package.Shell;
 using Microsoft.VisualStudio.R.Packages.R;
 using Microsoft.VisualStudio.Shell;
 
@@ -13,13 +14,15 @@ namespace Microsoft.VisualStudio.R.Package.TaskList {
     /// Provider of items for VS error list
     /// </summary>
     public sealed class VsTaskListProvider : ErrorListProvider {
-        private static Guid _taskListProviderGuid = new Guid("FE76E4B5-D946-4508-B0BA-B59CA995AAC0");
+        private static readonly Guid _taskListProviderGuid = new Guid("FE76E4B5-D946-4508-B0BA-B59CA995AAC0");
 
-        private Dictionary<IEditorTaskListItem, VsTaskItem> _itemMap = new Dictionary<IEditorTaskListItem, VsTaskItem>();
+        private readonly Dictionary<IEditorTaskListItem, VsTaskItem> _itemMap = new Dictionary<IEditorTaskListItem, VsTaskItem>();
+        private readonly IServiceContainer _services;
+        private readonly IIdleTimeService _idleTime;
         private IEditorTaskListItemSource _source;
         private bool _dirty;
 
-        public VsTaskListProvider(IEditorTaskListItemSource source)
+        public VsTaskListProvider(IEditorTaskListItemSource source, IServiceContainer services)
             : base(RPackage.Current) {
             // Registration of the provider in VS is done by the base class.
 
@@ -31,7 +34,9 @@ namespace Microsoft.VisualStudio.R.Package.TaskList {
             _source.BeginUpdatingTasks += OnBeginUpdatingTasks;
             _source.EndUpdatingTasks += OnEndUpdatingTasks;
 
-            VsAppShell.Current.Idle += OnIdle;
+            _services = services;
+            _idleTime = services.IdleTime();
+            _idleTime.Idle += OnIdle;
 
             ProviderName = "R Language Service";
             ProviderGuid = _taskListProviderGuid;
@@ -40,10 +45,10 @@ namespace Microsoft.VisualStudio.R.Package.TaskList {
         private void OnTasksAdded(object sender, TasksListItemsChangedEventArgs e) {
             SuspendRefresh();
             foreach (var task in e.Tasks) {
-                var vsTask = new VsTaskItem(task, _source);
+                var vsTask = new VsTaskItem(task, _source, _services);
                 _itemMap[task] = vsTask;
 
-                this.Tasks.Add(vsTask);
+                Tasks.Add(vsTask);
             }
 
             _dirty = true;
@@ -53,9 +58,8 @@ namespace Microsoft.VisualStudio.R.Package.TaskList {
         private void OnTasksRemoved(object sender, TasksListItemsChangedEventArgs e) {
             SuspendRefresh();
             foreach (var task in e.Tasks) {
-                VsTaskItem vsTask;
-                if (_itemMap.TryGetValue(task, out vsTask)) {
-                    this.Tasks.Remove(vsTask);
+                if (_itemMap.TryGetValue(task, out var vsTask)) {
+                    Tasks.Remove(vsTask);
                     _itemMap.Remove(task);
                 }
             }
@@ -64,21 +68,10 @@ namespace Microsoft.VisualStudio.R.Package.TaskList {
             ResumeRefresh();
         }
 
-        private void OnTasksCleared(object sender, EventArgs e) {
-            Clear();
-        }
-
-        private void OnTasksUpdated(object sender, EventArgs e) {
-            _dirty = true;
-        }
-
-        private void OnBeginUpdatingTasks(object sender, EventArgs e) {
-            SuspendRefresh();
-        }
-
-        private void OnEndUpdatingTasks(object sender, EventArgs e) {
-            ResumeRefresh();
-        }
+        private void OnTasksCleared(object sender, EventArgs e) => Clear();
+        private void OnTasksUpdated(object sender, EventArgs e) => _dirty = true;
+        private void OnBeginUpdatingTasks(object sender, EventArgs e) => SuspendRefresh();
+        private void OnEndUpdatingTasks(object sender, EventArgs e) => ResumeRefresh();
 
         private void Clear() {
             Tasks.Clear();
@@ -88,7 +81,7 @@ namespace Microsoft.VisualStudio.R.Package.TaskList {
 
         protected override void Dispose(bool disposing) {
             if (_source != null) {
-                VsAppShell.Current.Idle -= OnIdle;
+                _idleTime.Idle -= OnIdle;
 
                 _source.TasksAdded -= OnTasksAdded;
                 _source.TasksRemoved -= OnTasksRemoved;
@@ -103,21 +96,15 @@ namespace Microsoft.VisualStudio.R.Package.TaskList {
             base.Dispose(disposing);
         }
 
-        private void OnIdle(object sender, EventArgs eventArgs) {
-            FlushTasks();
-        }
+        private void OnIdle(object sender, EventArgs eventArgs) => FlushTasks();
 
         internal void FlushTasks() {
             if (_dirty) {
                 _dirty = false;
 
-                SuspendRefresh();
-
-                foreach (VsTaskItem vsTaskItem in this.Tasks) {
+                foreach (VsTaskItem vsTaskItem in Tasks) {
                     vsTaskItem.Update();
                 }
-
-                ResumeRefresh();
             }
         }
     }

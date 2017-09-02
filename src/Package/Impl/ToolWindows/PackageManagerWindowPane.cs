@@ -3,12 +3,11 @@
 
 using System;
 using System.Runtime.InteropServices;
-using Microsoft.Common.Core.Shell;
+using Microsoft.Common.Core.Services;
 using Microsoft.R.Components.PackageManager;
 using Microsoft.R.Components.PackageManager.Implementation;
 using Microsoft.R.Components.Search;
-using Microsoft.R.Components.Settings;
-using Microsoft.R.Host.Client;
+using Microsoft.VisualStudio.Imaging;
 using Microsoft.VisualStudio.OLE.Interop;
 using Microsoft.VisualStudio.R.Package.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
@@ -17,27 +16,23 @@ using Constants = Microsoft.VisualStudio.OLE.Interop.Constants;
 namespace Microsoft.VisualStudio.R.Package.ToolWindows {
     [Guid(WindowGuidString)]
     internal class PackageManagerWindowPane : VisualComponentToolWindow<IRPackageManagerVisualComponent>, IOleCommandTarget {
-        private readonly IRSession _session;
+        public const string WindowGuidString = "363F84AD-3397-4FDE-97EA-1ABD73C64BB3";
+
         private readonly IRPackageManager _packageManager;
         private readonly ISearchControlProvider _searchControlProvider;
-        private readonly IRSettings _settings;
-        private readonly ICoreShell _coreShell;
-        public const string WindowGuidString = "363F84AD-3397-4FDE-97EA-1ABD73C64BB3";
         public static Guid WindowGuid { get; } = new Guid(WindowGuidString);
 
         private IOleCommandTarget _commandTarget;
 
-        public PackageManagerWindowPane(IRPackageManager packageManager, IRSession session, ISearchControlProvider searchControlProvider, IRSettings settings, ICoreShell coreShell) {
+        public PackageManagerWindowPane(IRPackageManager packageManager, ISearchControlProvider searchControlProvider, IServiceContainer services): base(services) {
             _packageManager = packageManager;
-            _session = session;
             _searchControlProvider = searchControlProvider;
-            _settings = settings;
-            _coreShell = coreShell;
+            BitmapImageMoniker = KnownMonikers.Package;
             Caption = Resources.PackageManagerWindowCaption;
         }
 
         protected override void OnCreate() {
-            Component = new RPackageManagerVisualComponent(_packageManager, this, _session, _searchControlProvider, _settings, _coreShell);
+            Component = new RPackageManagerVisualComponent(_packageManager, this, _searchControlProvider, Services);
             base.OnCreate();
         }
 
@@ -56,12 +51,10 @@ namespace Microsoft.VisualStudio.R.Package.ToolWindows {
             base.Dispose(disposing);
         }
 
-        public int QueryStatus(ref Guid pguidCmdGroup, uint cCmds, OLECMD[] prgCmds, IntPtr pCmdText) {
-            return _commandTarget?.QueryStatus(ref pguidCmdGroup, cCmds, prgCmds, pCmdText) ?? (int)Constants.OLECMDERR_E_NOTSUPPORTED;
-        }
+        public int QueryStatus(ref Guid pguidCmdGroup, uint cCmds, OLECMD[] prgCmds, IntPtr pCmdText)
+            => _commandTarget?.QueryStatus(ref pguidCmdGroup, cCmds, prgCmds, pCmdText) ?? (int)Constants.OLECMDERR_E_NOTSUPPORTED;
 
-        public int Exec(ref Guid pguidCmdGroup, uint nCmdId, uint nCmdexecopt, IntPtr pvaIn, IntPtr pvaOut) {
-            return _commandTarget?.Exec(ref pguidCmdGroup, nCmdId, nCmdexecopt, pvaIn, pvaOut) ?? (int)Constants.OLECMDERR_E_NOTSUPPORTED;
-        }
+        public int Exec(ref Guid pguidCmdGroup, uint nCmdId, uint nCmdexecopt, IntPtr pvaIn, IntPtr pvaOut)
+            => _commandTarget?.Exec(ref pguidCmdGroup, nCmdId, nCmdexecopt, pvaIn, pvaOut) ?? (int)Constants.OLECMDERR_E_NOTSUPPORTED;
     }
 }

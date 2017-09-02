@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{AD8A000B-320D-4B11-B7FF-95C314A40E7B}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Microsoft.R.Host.Protocol.Test</RootNamespace>
+    <AssemblyName>Microsoft.R.Host.Protocol.Test</AssemblyName>
+    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
+    <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
+    <ReferencePath>$(ProgramFiles)\Common Files\microsoft shared\VSTT\$(VisualStudioVersion)\UITestExtensionPackages</ReferencePath>
+    <IsCodedUITest>False</IsCodedUITest>
+    <TestProjectType>UnitTest</TestProjectType>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+  </PropertyGroup>
+  <Import Project="..\..\..\R.Settings.props" />
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(ObjDirectory)</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(BinDirectory)</BaseOutputPath>
+    <IntermediateOutputPath>$(BaseIntermediateOutputPath)\$(Configuration)\$(AssemblyName)\</IntermediateOutputPath>
+    <OutputPath>$(BaseOutputPath)\$(Configuration)\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+  </ItemGroup>
+  <Choose>
+    <When Condition="('$(VisualStudioVersion)' == '10.0' or '$(VisualStudioVersion)' == '') and '$(TargetFrameworkVersion)' == 'v3.5'">
+      <ItemGroup>
+        <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
+      </ItemGroup>
+    </When>
+    <Otherwise />
+  </Choose>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\Core\Impl\Microsoft.R.Common.Core.csproj">
+      <Project>{8d408909-459f-4853-a36c-745118f99869}</Project>
+      <Name>Microsoft.Common.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Common\Core\Test\Microsoft.Common.Core.Test.csproj">
+      <Project>{fc4aad0a-13b9-49ee-a59c-f03142958170}</Project>
+      <Name>Microsoft.Common.Core.Test</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Languages\Core\Test\Microsoft.Languages.Core.Test.csproj">
+      <Project>{ee2504a4-4666-460b-8552-5b342718cb02}</Project>
+      <Name>Microsoft.Languages.Core.Test</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\R\Interpreters\Impl\Microsoft.R.Interpreters.csproj">
+      <Project>{8445A4FB-4443-432C-94E8-1408559B7F58}</Project>
+      <Name>Microsoft.R.Interpreters</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\UnitTests\Core\Impl\Microsoft.UnitTests.Core.csproj">
+      <Project>{5ef2ad64-d6fe-446b-b350-8c7f0df0834d}</Project>
+      <Name>Microsoft.UnitTests.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Windows\Core\Impl\Microsoft.R.Common.Core.Windows.csproj">
+      <Project>{01e3d8c2-9c24-492b-b13b-c6d7068b6bf8}</Project>
+      <Name>Microsoft.R.Common.Core.Windows</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\Windows\R\Interpreters\Impl\Microsoft.R.Interpreters.Windows.csproj">
+      <Project>{DE1EC50A-C588-45A9-B22C-981419CD7CD4}</Project>
+      <Name>Microsoft.R.Interpreters.Windows</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Impl\Microsoft.R.Host.Protocol.csproj">
+      <Project>{c46e5f53-4caf-4c65-b173-ca8140fb41e0}</Project>
+      <Name>Microsoft.R.Host.Protocol</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="$(SourceDirectory)AssemblyVersionInfo.cs">
+      <Link>Properties\AssemblyVersionInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\GlobalAssemblyInfo.cs">
+      <Link>Properties\GlobalAssemblyInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\..\UserProfile\Impl\Resources.Designer.cs">
+      <Link>Resources.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\UserProfile\Impl\RUserProfileServices.cs">
+      <Link>RUserProfileServices.cs</Link>
+    </Compile>
+    <Compile Include="..\..\UserProfile\Impl\RUserProfileServicesHelper.cs">
+      <Link>RUserProfileServicesHelper.cs</Link>
+    </Compile>
+    <Compile Include="ProtocolMessage\ProtocolMessageTest.cs" />
+    <Compile Include="RHostPipe\RHostPipeTest.cs" />
+    <Compile Include="UserProfileServicePipe\UserProfileServiceMock.cs" />
+    <Compile Include="UserProfileServicePipe\UserProfileServiceFuzzTestMock.cs" />
+    <Compile Include="UserProfileServicePipe\UserProfileResultMock.cs" />
+    <Compile Include="UserProfileServicePipe\UserProfileServicePipeTest.cs" />
+    <Compile Include="UserProfileServicePipe\UserProfileTestNamedPipeTestStreamFactory.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="project.json" />
+  </ItemGroup>
+  <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(SourceDirectory)R.Build.Version.targets" />
+  <Import Project="$(SourceDirectory)R.Build.Sign.targets" />
+</Project>

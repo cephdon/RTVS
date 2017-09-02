@@ -9,44 +9,53 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect {
     /// <summary>
     /// Range of integers
     /// </summary>
-    [DebuggerDisplay("[{Start},{_end})")]
+    [DebuggerDisplay("[{Start},{End})")]
     public struct Range {
-        int _end;
-
-        public Range(int start, int count) {
+        public Range(long start, long count) {
             Start = start;
             Count = count;
-            _end = start + count;
+            End = start + count;
         }
 
-        public int Start { get; }
+        public long Start { get; }
+        public long Count { get; }
+        public long End { get; }
 
-        public int Count { get; }
-
-        public bool Contains(int value) {
-            return (value >= Start) && (value < _end);
-        }
+        public bool Contains(long value) => value >= Start && value < End;
 
         public bool Contains(Range other) {
-            if (Count == 0) return false;
-
-            return (other.Start <= this.Start) && (other._end >= this._end);
+            if (Count == 0) {
+                return false;
+            }
+            return other.Start <= Start && other.End >= End;
         }
 
-        public IEnumerable<int> GetEnumerable(bool ascending = true) {
+        public IEnumerable<long> GetEnumerable(bool ascending = true) {
             if (ascending) {
-                for (int i = Start; i < _end; i++) {
+                for (var i = Start; i < End; i++) {
                     yield return i;
                 }
             } else {
-                for (int i = _end - 1; i >= Start; i--) {
+                for (var i = End - 1; i >= Start; i--) {
                     yield return i;
                 }
             }
         }
 
-        public string ToRString() {
-            return Invariant($"{Start + 1}:{Start + Count}");
+        public string ToRString() => Invariant($"{Start + 1}:{Start + Count}");
+
+        public static bool operator ==(Range x, Range y)
+            => x.Start == y.Start && x.Count == y.Count;
+
+        public static bool operator !=(Range x, Range y) => !(x == y);
+
+        public override bool Equals(object obj) {
+            if (!(obj is Range)) {
+                return false;
+            }
+            return (Range)obj == this;
         }
+
+        public override int GetHashCode() => base.GetHashCode();
     }
 }

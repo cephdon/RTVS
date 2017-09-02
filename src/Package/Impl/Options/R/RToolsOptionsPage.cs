@@ -1,303 +1,264 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using Microsoft.Common.Core;
 using Microsoft.Common.Core.Enums;
+using Microsoft.Common.Core.Extensions;
 using Microsoft.Common.Core.Logging;
-using Microsoft.R.Components.ConnectionManager.Implementation;
+using Microsoft.Common.Core.Shell;
 using Microsoft.R.Components.Settings;
-using Microsoft.R.Support.Settings;
-using Microsoft.R.Support.Settings.Definitions;
 using Microsoft.VisualStudio.R.Package.Options.Attributes;
 using Microsoft.VisualStudio.R.Package.Options.R.Tools;
+using Microsoft.VisualStudio.R.Package.Shell;
 using Microsoft.VisualStudio.R.Package.Telemetry;
 using Microsoft.VisualStudio.Shell;
-using Newtonsoft.Json;
+using static System.FormattableString;
 
 namespace Microsoft.VisualStudio.R.Package.Options.R {
     public class RToolsOptionsPage : DialogPage {
-        private bool _allowLoadingFromStorage;
-        private bool _applied;
+        private readonly SettingsHolder _holder;
 
         public RToolsOptionsPage() {
-            this.SettingsRegistryPath = @"UserSettings\R_Tools";
+            var settings = VsAppShell.Current.GetService<IRSettings>();
+            _holder = new SettingsHolder(settings);
         }
 
-        [Browsable(false)]
-        public bool IsLoadingFromStorage { get; private set; }
-
-        [LocCategory("Settings_GeneralCategory")]
-        [CustomLocDisplayName("Settings_CranMirror")]
-        [LocDescription("Settings_CranMirror_Description")]
-        [TypeConverter(typeof(CranMirrorTypeConverter))]
-        [DefaultValue(null)]
-        public string CranMirror {
-            get { return RToolsSettings.Current.CranMirror; }
-            set { RToolsSettings.Current.CranMirror = value; }
+        [LocCategory(nameof(Resources.Settings_WorkspaceCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_ShowWorkspaceSwitchConfirmationDialog))]
+        [LocDescription(nameof(Resources.Settings_ShowWorkspaceSwitchConfirmationDialog_Description))]
+        [TypeConverter(typeof(YesNoTypeConverter))]
+        [DefaultValue(YesNoAsk.Yes)]
+        public YesNo ShowWorkspaceSwitchConfirmationDialog {
+            get => _holder.GetValue(YesNo.Yes);
+            set => _holder.SetValue(value);
         }
 
-        [LocCategory("Settings_WorkspaceCategory")]
-        [CustomLocDisplayName("Settings_LoadRDataOnProjectLoad")]
-        [LocDescription("Settings_LoadRDataOnProjectLoad_Description")]
+        [LocCategory(nameof(Resources.Settings_WorkspaceCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_ShowSaveOnResetConfirmationDialog))]
+        [LocDescription(nameof(Resources.Settings_ShowSaveOnResetConfirmationDialog_Description))]
+        [TypeConverter(typeof(YesNoTypeConverter))]
+        [DefaultValue(YesNoAsk.Yes)]
+        public YesNo ShowSaveOnResetConfirmationDialog {
+            get => _holder.GetValue(YesNo.Yes);
+            set => _holder.SetValue(value);
+        }
+
+        [LocCategory(nameof(Resources.Settings_WorkspaceCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_LoadRDataOnProjectLoad))]
+        [LocDescription(nameof(Resources.Settings_LoadRDataOnProjectLoad_Description))]
         [TypeConverter(typeof(YesNoAskTypeConverter))]
         [DefaultValue(YesNoAsk.No)]
         public YesNoAsk LoadRDataOnProjectLoad {
-            get { return RToolsSettings.Current.LoadRDataOnProjectLoad; }
-            set { RToolsSettings.Current.LoadRDataOnProjectLoad = value; }
+            get => _holder.GetValue(YesNoAsk.No);
+            set => _holder.SetValue(value);
         }
 
-        [LocCategory("Settings_WorkspaceCategory")]
-        [CustomLocDisplayName("Settings_SaveRDataOnProjectUnload")]
-        [LocDescription("Settings_SaveRDataOnProjectUnload_Description")]
+        [LocCategory(nameof(Resources.Settings_WorkspaceCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_SaveRDataOnProjectUnload))]
+        [LocDescription(nameof(Resources.Settings_SaveRDataOnProjectUnload_Description))]
         [TypeConverter(typeof(YesNoAskTypeConverter))]
         [DefaultValue(YesNoAsk.No)]
         public YesNoAsk SaveRDataOnProjectUnload {
-            get { return RToolsSettings.Current.SaveRDataOnProjectUnload; }
-            set { RToolsSettings.Current.SaveRDataOnProjectUnload = value; }
+            get => _holder.GetValue(YesNoAsk.No);
+            set => _holder.SetValue(value);
         }
 
-        [LocCategory("Settings_HistoryCategory")]
-        [CustomLocDisplayName("Settings_AlwaysSaveHistory")]
-        [LocDescription("Settings_AlwaysSaveHistory_Description")]
+        [LocCategory(nameof(Resources.Settings_WorkspaceCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_ShowHostLoadMeter))]
+        [LocDescription(nameof(Resources.Settings_ShowHostLoadMeter_Description))]
+        [DefaultValue(false)]
+        public bool ShowHostLoadMeter {
+            get => _holder.GetValue(true);
+            set => _holder.SetValue(value);
+        }
+
+        [LocCategory(nameof(Resources.Settings_HistoryCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_AlwaysSaveHistory))]
+        [LocDescription(nameof(Resources.Settings_AlwaysSaveHistory_Description))]
         [DefaultValue(true)]
         public bool AlwaysSaveHistory {
-            get { return RToolsSettings.Current.AlwaysSaveHistory; }
-            set { RToolsSettings.Current.AlwaysSaveHistory = value; }
+            get => _holder.GetValue(true);
+            set => _holder.SetValue(value);
         }
 
-        [LocCategory("Settings_HistoryCategory")]
-        [CustomLocDisplayName("Settings_ClearFilterOnAddHistory")]
-        [LocDescription("Settings_ClearFilterOnAddHistory_Description")]
+        [LocCategory(nameof(Resources.Settings_HistoryCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_ClearFilterOnAddHistory))]
+        [LocDescription(nameof(Resources.Settings_ClearFilterOnAddHistory_Description))]
         [DefaultValue(true)]
         public bool ClearFilterOnAddHistory {
-            get { return RToolsSettings.Current.ClearFilterOnAddHistory; }
-            set { RToolsSettings.Current.ClearFilterOnAddHistory = value; }
+            get => _holder.GetValue(true);
+            set => _holder.SetValue(value);
         }
 
-        [LocCategory("Settings_HistoryCategory")]
-        [CustomLocDisplayName("Settings_MultilineHistorySelection")]
-        [LocDescription("Settings_MultilineHistorySelection_Description")]
+        [LocCategory(nameof(Resources.Settings_HistoryCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_MultilineHistorySelection))]
+        [LocDescription(nameof(Resources.Settings_MultilineHistorySelection_Description))]
         [DefaultValue(true)]
         public bool MultilineHistorySelection {
-            get { return RToolsSettings.Current.MultilineHistorySelection; }
-            set { RToolsSettings.Current.MultilineHistorySelection = value; }
+            get => _holder.GetValue(true);
+            set => _holder.SetValue(value);
         }
 
-        [LocCategory("Settings_REngineCategory")]
-        [CustomLocDisplayName("Settings_RCodePage")]
-        [LocDescription("Settings_RCodePage_Description")]
+        [LocCategory(nameof(Resources.Settings_REngineCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_CranMirror))]
+        [LocDescription(nameof(Resources.Settings_CranMirror_Description))]
+        [TypeConverter(typeof(CranMirrorTypeConverter))]
+        [DefaultValue(null)]
+        public string CranMirror {
+            get => _holder.GetValue<string>();
+            set => _holder.SetValue(value);
+        }
+
+        [LocCategory(nameof(Resources.Settings_REngineCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_RCodePage))]
+        [LocDescription(nameof(Resources.Settings_RCodePage_Description))]
         [TypeConverter(typeof(EncodingTypeConverter))]
         [DefaultValue(0)]
         public int RCodePage {
-            get { return RToolsSettings.Current.RCodePage; }
-            set { RToolsSettings.Current.RCodePage = value; }
+            get => _holder.GetValue(0);
+            set => _holder.SetValue(value);
         }
 
-        [LocCategory("Settings_DebuggingCategory")]
-        [CustomLocDisplayName("Settings_EvaluateActiveBindings")]
-        [LocDescription("Settings_EvaluateActiveBindings_Description")]
+        [LocCategory(nameof(Resources.Settings_DebuggingCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_EvaluateActiveBindings))]
+        [LocDescription(nameof(Resources.Settings_EvaluateActiveBindings_Description))]
         [DefaultValue(true)]
         public bool EvaluateActiveBindings {
-            get { return RToolsSettings.Current.EvaluateActiveBindings; }
-            set { RToolsSettings.Current.EvaluateActiveBindings = value; }
+            get => _holder.GetValue(true);
+            set => _holder.SetValue(value);
         }
 
-        [LocCategory("Settings_DebuggingCategory")]
-        [CustomLocDisplayName("Settings_ShowDotPrefixedVariables")]
-        [LocDescription("Settings_ShowDotPrefixedVariables_Description")]
+        [LocCategory(nameof(Resources.Settings_DebuggingCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_ShowDotPrefixedVariables))]
+        [LocDescription(nameof(Resources.Settings_ShowDotPrefixedVariables_Description))]
         [DefaultValue(false)]
         public bool ShowDotPrefixedVariables {
-            get { return RToolsSettings.Current.ShowDotPrefixedVariables; }
-            set { RToolsSettings.Current.ShowDotPrefixedVariables = value; }
+            get => _holder.GetValue(false);
+            set => _holder.SetValue(value);
         }
 
-        [LocCategory("Settings_HelpCategory")]
-        [CustomLocDisplayName("Settings_HelpBrowser")]
-        [LocDescription("Settings_HelpBrowser_Description")]
+        [LocCategory(nameof(Resources.Settings_HelpCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_HelpBrowser))]
+        [LocDescription(nameof(Resources.Settings_HelpBrowser_Description))]
         [TypeConverter(typeof(HelpBrowserTypeConverter))]
         [DefaultValue(HelpBrowserType.Automatic)]
-        public HelpBrowserType HelpBrowser {
-            get { return RToolsSettings.Current.HelpBrowserType; }
-            set { RToolsSettings.Current.HelpBrowserType = value; }
+        public HelpBrowserType HelpBrowserType {
+            get => _holder.GetValue(HelpBrowserType.Automatic);
+            set => _holder.SetValue(value);
         }
 
-        [LocCategory("Settings_HelpCategory")]
-        [CustomLocDisplayName("Settings_WebHelpSearchString")]
-        [LocDescription("Settings_WebHelpSearchString_Description")]
+        [LocCategory(nameof(Resources.Settings_HelpCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_WebHelpSearchString))]
+        [LocDescription(nameof(Resources.Settings_WebHelpSearchString_Description))]
         [DefaultValue("R site:stackoverflow.com")]
         public string WebHelpSearchString {
-            get { return RToolsSettings.Current.WebHelpSearchString; }
-            set { RToolsSettings.Current.WebHelpSearchString = value; }
+            get => _holder.GetValue("R site:stackoverflow.com", "WebHelpSearchString");
+            set => _holder.SetValue(value);
         }
 
-        [LocCategory("Settings_HelpCategory")]
-        [CustomLocDisplayName("Settings_WebHelpSearchBrowserType")]
-        [LocDescription("Settings_WebHelpSearchBrowserType_Description")]
+        [LocCategory(nameof(Resources.Settings_HelpCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_WebHelpSearchBrowserType))]
+        [LocDescription(nameof(Resources.Settings_WebHelpSearchBrowserType_Description))]
         [TypeConverter(typeof(BrowserTypeConverter))]
         [DefaultValue(BrowserType.Internal)]
         public BrowserType WebHelpSearchBrowserType {
-            get { return RToolsSettings.Current.WebHelpSearchBrowserType; }
-            set { RToolsSettings.Current.WebHelpSearchBrowserType = value; }
+            get => _holder.GetValue(BrowserType.Internal);
+            set => _holder.SetValue(value);
         }
 
-        [LocCategory("Settings_HtmlCategory")]
-        [CustomLocDisplayName("Settings_HtmlBrowserType")]
-        [LocDescription("Settings_HtmlBrowserType_Description")]
+        [LocCategory(nameof(Resources.Settings_HtmlCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_HtmlBrowserType))]
+        [LocDescription(nameof(Resources.Settings_HtmlBrowserType_Description))]
         [TypeConverter(typeof(BrowserTypeConverter))]
-        [DefaultValue(BrowserType.Internal)]
+        [DefaultValue(BrowserType.External)]
         public BrowserType HtmlBrowserType {
-            get { return RToolsSettings.Current.HtmlBrowserType; }
-            set { RToolsSettings.Current.HtmlBrowserType = value; }
+            get => _holder.GetValue(BrowserType.External);
+            set => _holder.SetValue(value);
         }
 
-        [LocCategory("Settings_MarkdownCategory")]
-        [CustomLocDisplayName("Settings_MarkdownBrowserType")]
-        [LocDescription("Settings_MarkdownBrowserType_Description")]
+        [LocCategory(nameof(Resources.Settings_MarkdownCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_MarkdownBrowserType))]
+        [LocDescription(nameof(Resources.Settings_MarkdownBrowserType_Description))]
         [TypeConverter(typeof(BrowserTypeConverter))]
         [DefaultValue(BrowserType.External)]
         public BrowserType MarkdownBrowserType {
-            get { return RToolsSettings.Current.MarkdownBrowserType; }
-            set { RToolsSettings.Current.MarkdownBrowserType = value; }
+            get => _holder.GetValue(BrowserType.External);
+            set => _holder.SetValue(value);
         }
 
-        [LocCategory("Settings_GeneralCategory")]
-        [CustomLocDisplayName("Settings_SurveyNewsCheck")]
-        [LocDescription("Settings_SurveyNewsCheck_Description")]
+        [LocCategory(nameof(Resources.Settings_GeneralCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_SurveyNewsCheck))]
+        [LocDescription(nameof(Resources.Settings_SurveyNewsCheck_Description))]
         [TypeConverter(typeof(SurveyNewsPolicyTypeConverter))]
         [DefaultValue(SurveyNewsPolicy.CheckOnceWeek)]
         public SurveyNewsPolicy SurveyNewsCheck {
-            get { return RToolsSettings.Current.SurveyNewsCheck; }
-            set { RToolsSettings.Current.SurveyNewsCheck = value; }
+            get => _holder.GetValue(SurveyNewsPolicy.CheckOnceWeek);
+            set => _holder.SetValue(value);
         }
 
-        [LocCategory("Settings_LogCategory")]
-        [CustomLocDisplayName("Settings_LogLevel")]
-        [LocDescription("Settings_LogLevel_Description")]
-#if DEBUG
-        [DefaultValue(LogVerbosity.Traffic)]
-#else
+        [LocCategory(nameof(Resources.Settings_LogCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_LogLevel))]
+        [LocDescription(nameof(Resources.Settings_LogLevel_Description))]
+        [TypeConverter(typeof(LogVerbosityTypeConverter))]
         [DefaultValue(LogVerbosity.Normal)]
-#endif
-        public LogVerbosity LogLevel {
-            get { return RToolsSettings.Current.LogVerbosity; }
-            set { RToolsSettings.Current.LogVerbosity = value; }
+        public LogVerbosity LogVerbosity {
+            get => _holder.GetValue(LogVerbosity.Normal);
+            set => _holder.SetValue(value);
         }
 
-        /// <summary>
-        /// The last time that we contacted the survey/news server.
-        /// Used in conjunction with <see cref="SurveyNewsLastCheck"/>
-        /// option to determine if we should contact the survey/news server
-        /// when an R project is opened.
-        /// </summary>
-        [Browsable(false)]
-        public DateTime SurveyNewsLastCheck {
-            get { return RToolsSettings.Current.SurveyNewsLastCheck; }
-            set { RToolsSettings.Current.SurveyNewsLastCheck = value; }
+        [LocCategory(nameof(Resources.Settings_GridViewCategory))]
+        [CustomLocDisplayName(nameof(Resources.Settings_GridView_DynamicEvaluation))]
+        [LocDescription(nameof(Resources.Settings_GridView_DynamicEvaluation_Description))]
+        [DefaultValue(false)]
+        public bool GridDynamicEvaluation {
+            get => _holder.GetValue(false);
+            set => _holder.SetValue(value);
         }
 
-        [Browsable(false)]
-        public string SurveyNewsFeedUrl {
-            get { return RToolsSettings.Current.SurveyNewsFeedUrl; }
-            set { RToolsSettings.Current.SurveyNewsFeedUrl = value; }
-        }
-
-        [Browsable(false)]
-        public string SurveyNewsIndexUrl {
-            get { return RToolsSettings.Current.SurveyNewsIndexUrl; }
-            set { RToolsSettings.Current.SurveyNewsIndexUrl = value; }
-        }
-
-        [Browsable(false)]
-        [DefaultValue(true)]
-        public bool ShowPackageManagerDisclaimer {
-            get { return RToolsSettings.Current.ShowPackageManagerDisclaimer; }
-            set { RToolsSettings.Current.ShowPackageManagerDisclaimer = value; }
-        }
-
-        [Browsable(false)]
-        [DefaultValue(null)]
-        public string Connections {
-            get { return JsonConvert.SerializeObject(RToolsSettings.Current.Connections); }
-            set { RToolsSettings.Current.Connections = value != null ? JsonConvert.DeserializeObject<ConnectionInfo[]>(value) : new ConnectionInfo[0]; }
-        }
-
-        [Browsable(false)]
-        [DefaultValue(null)]
-        public string LastActiveConnection {
-            get { return JsonConvert.SerializeObject(RToolsSettings.Current.LastActiveConnection); }
-            set { RToolsSettings.Current.LastActiveConnection = value != null ? JsonConvert.DeserializeObject<ConnectionInfo>(value) : null; }
-        }
-
-        /// <summary>
-        /// REPL working directory: not exposed in Tools | Options dialog,
-        /// only saved along with other settings.
-        /// </summary>
-        internal string WorkingDirectory {
-            get { return RToolsSettings.Current.WorkingDirectory; }
-            set { RToolsSettings.Current.WorkingDirectory = value; }
-        }
-
-        internal string[] WorkingDirectoryList {
-            get { return RToolsSettings.Current.WorkingDirectoryList; }
-            set { RToolsSettings.Current.WorkingDirectoryList = value; }
-        }
-
-        /// <summary>
-        /// Loads all values from persistent storage. Typically called when package loads.
-        /// </summary>
-        public void LoadSettings() {
-            _allowLoadingFromStorage = true;
-            try {
-                LoadSettingsFromStorage();
-            } finally {
-                _allowLoadingFromStorage = false;
-            }
-        }
-
-        /// <summary>
-        /// Saves all values to persistent storage. Typically called when package unloads.
-        /// </summary>
-        public void SaveSettings() {
-            SaveSettingsToStorage();
-        }
-
-        public override void LoadSettingsFromStorage() {
-            // Only permit loading when loading was initiated via LoadSettings().
-            // Otherwise dialog will load values from registry instead of using
-            // ones currently set in memory.
-            if (_allowLoadingFromStorage) {
-                IsLoadingFromStorage = true;
-                base.LoadSettingsFromStorage();
-                IsLoadingFromStorage = false;
-            }
-        }
-
-        protected override void OnClosed(EventArgs e) {
-            if (!_applied) {
-                // On cancel load previously saved settings back
-                LoadSettings();
-            }
-            _applied = false;
-            base.OnClosed(e);
-        }
-
-        protected override void OnActivate(CancelEventArgs e) {
-            // Save in-memory settings to storage. In case dialog
-            // is canceled with some settings modified we will be
-            // able to restore them from storage.
-            SaveSettingsToStorage();
-            base.OnActivate(e);
-        }
+        /// Overrides default methods since we provide custom settings storage
+        public override void LoadSettingsFromStorage() { }
+        public override void SaveSettingsToStorage() { }
 
         protected override void OnApply(PageApplyEventArgs e) {
             if (e.ApplyBehavior == ApplyKind.Apply) {
-                _applied = true;
-                // On OK persist settings
-                SaveSettingsToStorage();
+                _holder.Apply();
                 RtvsTelemetry.Current.ReportSettings();
             }
             base.OnApply(e);
+        }
+
+        /// <summary>
+        /// Holds settings (name/values) while they are being edited. We don't 
+        /// want to apply changes to the actual settings until user clicks OK.
+        /// </summary>
+        private class SettingsHolder {
+            private readonly IRSettings _settings;
+            private readonly IDictionary<string, object> _dict;
+
+            public SettingsHolder(IRSettings settings) {
+                _settings = settings;
+                _dict = settings.GetPropertyValueDictionary();
+            }
+
+            public T GetValue<T>(T defaultValue, [CallerMemberName] string name = null) {
+                return _dict.TryGetValue(name, out var value) ? (T)value : defaultValue;
+            }
+
+            public T GetValue<T>([CallerMemberName] string name = null) => GetValue<T>(default(T), name);
+
+            public void SetValue(object value, [CallerMemberName] string name = null) {
+                Debug.Assert(_dict.ContainsKey(name), Invariant($"Unknown setting {name}. RToolsOptionsPage property name does not match IRSettings"));
+                _dict[name] = value;
+            }
+
+            public void Apply() {
+                _settings.SetProperties(_dict);
+                _settings.SaveSettingsAsync().DoNotWait();
+            }
         }
     }
 }

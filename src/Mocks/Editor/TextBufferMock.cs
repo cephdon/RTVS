@@ -4,34 +4,27 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using Microsoft.Languages.Editor.Text;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Utilities;
 
-namespace Microsoft.VisualStudio.Editor.Mocks
-{
+namespace Microsoft.VisualStudio.Editor.Mocks {
     [ExcludeFromCodeCoverage]
-    public class TextBufferMock : ITextBuffer
-    {
-        public TextBufferMock(string content, string contentTypeName)
-        {
+    public class TextBufferMock : ITextBuffer {
+        public TextBufferMock(string content, string contentTypeName) {
             ContentType = new ContentTypeMock(contentTypeName, new IContentType[] { ContentTypeMock.TextContentType });
             TextVersionMock initialVersion = new TextVersionMock(this, 0, content.Length);
             CurrentSnapshot = new TextSnapshotMock(content, this, initialVersion);
+            EditorBuffer.Create(this, null);
         }
-        public void Clear() {
-            Replace(new Span(0, CurrentSnapshot.Length), string.Empty);
-        }
+        public void Clear() => Replace(new Span(0, CurrentSnapshot.Length), string.Empty);
 
         #region ITextBuffer Members
 
-        public void ChangeContentType(IContentType newContentType, object editTag)
-        {
+        public void ChangeContentType(IContentType newContentType, object editTag) {
             var before = ContentType;
-
             ContentType = newContentType;
-
-            if (ContentTypeChanged != null)
-                ContentTypeChanged(this, new ContentTypeChangedEventArgs(CurrentSnapshot, CurrentSnapshot, before, newContentType, new object()));
+            ContentTypeChanged?.Invoke(this, new ContentTypeChangedEventArgs(CurrentSnapshot, CurrentSnapshot, before, newContentType, new object()));
         }
 
         public event EventHandler<TextContentChangedEventArgs> BeforeChanged; // unit tests only, for internal mock use
@@ -47,32 +40,15 @@ namespace Microsoft.VisualStudio.Editor.Mocks
         public event EventHandler<SnapshotSpanEventArgs> ReadOnlyRegionsChanged;
 #pragma warning restore 0067
 
-        public bool CheckEditAccess()
-        {
-            return true;
-        }
-
+        public bool CheckEditAccess() => true;
         public IContentType ContentType { get; private set; }
-
-        public ITextEdit CreateEdit()
-        {
-            return new TextEditMock(this);
-        }
-
-        public ITextEdit CreateEdit(EditOptions options, int? reiteratedVersionNumber, object editTag)
-        {
-            return new TextEditMock(this);
-        }
-
-        public IReadOnlyRegionEdit CreateReadOnlyRegionEdit()
-        {
-            throw new NotImplementedException();
-        }
+        public ITextEdit CreateEdit() => new TextEditMock(this);
+        public ITextEdit CreateEdit(EditOptions options, int? reiteratedVersionNumber, object editTag) => new TextEditMock(this);
+        public IReadOnlyRegionEdit CreateReadOnlyRegionEdit() => throw new NotImplementedException();
 
         public ITextSnapshot CurrentSnapshot { get; private set; }
 
-        public ITextSnapshot Delete(Span deleteSpan)
-        {
+        public ITextSnapshot Delete(Span deleteSpan) {
             var sb = new StringBuilder();
             var oldText = CurrentSnapshot.GetText(deleteSpan.Start, deleteSpan.Length);
 
@@ -87,54 +63,30 @@ namespace Microsoft.VisualStudio.Editor.Mocks
             return CurrentSnapshot;
         }
 
-        public bool EditInProgress
-        {
-            get { return false; }
-        }
+        public bool EditInProgress => false;
+        public NormalizedSpanCollection GetReadOnlyExtents(Span span) => new NormalizedSpanCollection(new Span(0, 0));
 
-        public NormalizedSpanCollection GetReadOnlyExtents(Span span)
-        {
-            return new NormalizedSpanCollection(new Span(0, 0));
-        }
-
-        public ITextSnapshot Insert(int position, string text)
-        {
+        public ITextSnapshot Insert(int position, string text) {
             var sb = new StringBuilder();
 
             sb.Append(CurrentSnapshot.GetText(0, position));
             sb.Append(text);
             sb.Append(CurrentSnapshot.GetText(position, CurrentSnapshot.Length - position));
 
-            TextChangeMock change = new TextChangeMock(position, 0, String.Empty, text);
-            TextSnapshotMock nextSnapshot = ((TextSnapshotMock)CurrentSnapshot).CreateNextSnapshot(sb.ToString(), change);
+            var change = new TextChangeMock(position, 0, String.Empty, text);
+            var nextSnapshot = ((TextSnapshotMock)CurrentSnapshot).CreateNextSnapshot(sb.ToString(), change);
 
             ApplyChange(nextSnapshot);
 
             return CurrentSnapshot;
         }
 
-        public bool IsReadOnly(Span span, bool isEdit)
-        {
-            return false;
-        }
+        public bool IsReadOnly(Span span, bool isEdit) => false;
+        public bool IsReadOnly(Span span) => false;
+        public bool IsReadOnly(int position, bool isEdit) => false;
+        public bool IsReadOnly(int position) => false;
 
-        public bool IsReadOnly(Span span)
-        {
-            return false;
-        }
-
-        public bool IsReadOnly(int position, bool isEdit)
-        {
-            return false;
-        }
-
-        public bool IsReadOnly(int position)
-        {
-            return false;
-        }
-
-        public ITextSnapshot Replace(Span replaceSpan, string replaceWith)
-        {
+        public ITextSnapshot Replace(Span replaceSpan, string replaceWith) {
             var sb = new StringBuilder();
             var oldText = CurrentSnapshot.GetText(replaceSpan);
 
@@ -142,16 +94,15 @@ namespace Microsoft.VisualStudio.Editor.Mocks
             sb.Append(replaceWith);
             sb.Append(CurrentSnapshot.GetText(replaceSpan.End, CurrentSnapshot.Length - replaceSpan.End));
 
-            TextChangeMock change = new TextChangeMock(replaceSpan.Start, replaceSpan.Length, oldText, replaceWith);
+            var change = new TextChangeMock(replaceSpan.Start, replaceSpan.Length, oldText, replaceWith);
 
-            TextSnapshotMock nextSnapshot = ((TextSnapshotMock)CurrentSnapshot).CreateNextSnapshot(sb.ToString(), change);
+            var nextSnapshot = ((TextSnapshotMock)CurrentSnapshot).CreateNextSnapshot(sb.ToString(), change);
             ApplyChange(nextSnapshot);
 
             return CurrentSnapshot;
         }
 
-        public void TakeThreadOwnership()
-        {
+        public void TakeThreadOwnership() {
         }
 
         #endregion
@@ -160,30 +111,19 @@ namespace Microsoft.VisualStudio.Editor.Mocks
         public PropertyCollection Properties { get; private set; } = new PropertyCollection();
         #endregion
 
-        private void ApplyChange(TextSnapshotMock snapshot)
-        {
-            if (Changing != null)
-                Changing(this, new TextContentChangingEventArgs(CurrentSnapshot, new object(), CancelAction));
+        private void ApplyChange(TextSnapshotMock snapshot) {
+            Changing?.Invoke(this, new TextContentChangingEventArgs(CurrentSnapshot, new object(), CancelAction));
 
             var before = CurrentSnapshot;
             CurrentSnapshot = snapshot;
 
             var args = new TextContentChangedEventArgs(before, CurrentSnapshot, EditOptions.None, new object());
 
-            if (BeforeChanged != null)
-                BeforeChanged(this, args);
-
-            if (ChangedHighPriority != null)
-                ChangedHighPriority(this, args);
-
-            if (Changed != null)
-                Changed(this, args);
-
-            if (ChangedLowPriority != null)
-                ChangedLowPriority(this, args);
-
-            if (PostChanged != null)
-                PostChanged(this, EventArgs.Empty);
+            BeforeChanged?.Invoke(this, args);
+            ChangedHighPriority?.Invoke(this, args);
+            Changed?.Invoke(this, args);
+            ChangedLowPriority?.Invoke(this, args);
+            PostChanged?.Invoke(this, EventArgs.Empty);
         }
 
         void CancelAction(TextContentChangingEventArgs e) { }

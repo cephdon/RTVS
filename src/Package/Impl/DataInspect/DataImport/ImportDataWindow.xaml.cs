@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -12,20 +13,22 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using Microsoft.Common.Core;
-using Microsoft.Common.Core.Shell;
+using Microsoft.Common.Core.Services;
+using Microsoft.Common.Core.Threading;
 using Microsoft.R.Components.InteractiveWorkflow;
 using Microsoft.R.Host.Client;
-using Microsoft.VisualStudio.PlatformUI;
 using Microsoft.VisualStudio.R.Package.DataInspect.DataSource;
-using Microsoft.VisualStudio.R.Package.Shell;
+using Microsoft.VisualStudio.R.Package.Wpf;
 using static System.FormattableString;
 
-namespace Microsoft.VisualStudio.R.Package.DataInspect.DataImport {
+namespace Microsoft.VisualStudio.R.Package.DataInspect.DataImport
+{
     /// <summary>
     /// Interaction logic for ImportDataWindow.xaml
     /// </summary>
-    public partial class ImportDataWindow : DialogWindow {
+    public partial class ImportDataWindow : PlatformDialogWindow {
         private const int MaxPreviewLines = 20;
+        private readonly IServiceContainer _services;
         private string _utf8FilePath;
 
         public IDictionary<string, string> Separators { get; } = new Dictionary<string, string> {
@@ -69,8 +72,9 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect.DataImport {
             PopulateEncodingList();
         }
 
-        public ImportDataWindow(string filePath, string name)
+        public ImportDataWindow(IServiceContainer services, string filePath, string name)
             : this() {
+            _services = services;
             SetFilePath(filePath, name);
         }
 
@@ -111,7 +115,7 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect.DataImport {
             }
 
             var val = ((KeyValuePair<string, int?>)comboBox.SelectedItem).Value;
-            return val?.ToString() ?? "NULL";
+            return val?.ToString(CultureInfo.InvariantCulture) ?? "NULL";
         }
 
         private static int GetSelectedValueAsInt(ComboBox comboBox) {
@@ -127,7 +131,7 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect.DataImport {
         }
 
         private void FileOpenButton_Click(object sender, RoutedEventArgs e) {
-            string filePath = VsAppShell.Current.FileDialog.ShowOpenFileDialog(Package.Resources.CsvFileFilter);
+            var filePath = _services.FileDialog().ShowOpenFileDialog(Package.Resources.CsvFileFilter);
             if (!string.IsNullOrEmpty(filePath)) {
                 SetFilePath(filePath);
             }
@@ -139,15 +143,15 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect.DataImport {
             FilePathBox.ScrollToEnd();
 
             VariableNameBox.Text = name ?? Path.GetFileNameWithoutExtension(filePath);
-            PreviewContent();
+            PreviewContentAsync().DoNotWait();
         }
 
-        private async void PreviewContent() {
+        private async Task PreviewContentAsync() {
             if (string.IsNullOrEmpty(FilePathBox.Text)) {
                 return;
             }
 
-            int cp = GetSelectedValueAsInt(EncodingComboBox);
+            var cp = GetSelectedValueAsInt(EncodingComboBox);
             PreviewFileContent(FilePathBox.Text, cp);
             await ConvertToUtf8(FilePathBox.Text, cp, false, MaxPreviewLines);
 
@@ -155,8 +159,9 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect.DataImport {
                 var expression = BuildCommandLine(preview: true);
                 if (expression != null) {
                     try {
-                        var grid = await GridDataSource.GetGridDataAsync(expression, null);
-
+                        var session = _services.GetService<IRInteractiveWorkflowProvider>().GetOrCreate().RSession;
+                        var ds = new GridDataSource(session);
+                        var grid = await ds.GetGridDataAsync(expression, null);
                         PopulateDataFramePreview(grid);
                         DataFramePreview.Visibility = Visibility.Visible;
                     } catch (Exception ex) {
@@ -168,7 +173,7 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect.DataImport {
 
         private bool Execute(string expression) {
             try {
-                var workflow = VsAppShell.Current.ExportProvider.GetExportedValue<IRInteractiveWorkflowProvider>().GetOrCreate();
+                var workflow = _services.GetService<IRInteractiveWorkflowProvider>().GetOrCreate();
                 workflow.Operations.ExecuteExpression(expression);
                 return true;
             } catch (Exception ex) {
@@ -178,7 +183,7 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect.DataImport {
         }
 
         private void OnError(string errorText) {
-            VsAppShell.Current.ShowErrorMessage(errorText);
+            _services.ShowErrorMessage(errorText);
             ProgressBarText.Text = string.Empty;
             ProgressBar.Value = -10;
         }
@@ -186,7 +191,7 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect.DataImport {
         private void PopulateEncodingList() {
             var encodings = Encoding.GetEncodings().OrderBy(x => x.DisplayName);
             foreach (var enc in encodings) {
-                string item = Invariant($"{enc.DisplayName} (CP {enc.CodePage})");
+                var item = Invariant($"{enc.DisplayName} (CP {enc.CodePage})");
                 Encodings[item] = enc.CodePage;
             }
 
@@ -198,7 +203,7 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect.DataImport {
             var dg = DataFramePreview;
             dg.Columns.Clear();
 
-            for (int i = 0; i < gridData.ColumnHeader.Range.Count; i++) {
+            for (long i = 0; i < gridData.ColumnHeader.Range.Count; i++) {
                 dg.Columns.Add(new DataGridTextColumn() {
                     Header = gridData.ColumnHeader[gridData.ColumnHeader.Range.Start + i],
                     Binding = new Binding(Invariant($"Values[{i}]")),
@@ -206,12 +211,12 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect.DataImport {
             }
 
             var rows = new List<DataFramePreviewRowItem>();
-            for (var r = 0; r < gridData.Grid.Range.Rows.Count; r++) {
+            for (long r = 0; r < gridData.Grid.Range.Rows.Count; r++) {
                 var row = new DataFramePreviewRowItem {
                     RowName = gridData.RowHeader[gridData.RowHeader.Range.Start + r]
                 };
 
-                for (int c = 0; c < gridData.Grid.Range.Columns.Count; c++) {
+                for (long c = 0; c < gridData.Grid.Range.Columns.Count; c++) {
                     row.Values.Add(gridData.Grid[gridData.Grid.Range.Rows.Start + r, gridData.Grid.Range.Columns.Start + c].ToUnicodeQuotes());
                 }
 
@@ -221,11 +226,11 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect.DataImport {
         }
 
         private string ReadFilePreview(string filePath, Encoding enc) {
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
             using (var sr = new StreamReader(filePath, enc, detectEncodingFromByteOrderMarks: true)) {
-                int readCount = 0;
+                var readCount = 0;
                 while (readCount < MaxPreviewLines) {
-                    string read = sr.ReadLine();
+                    var read = sr.ReadLine();
                     if (read == null) {
                         break;
                     }
@@ -242,16 +247,16 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect.DataImport {
         }
 
         private void ComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e) {
-            PreviewContent();
+            PreviewContentAsync().DoNotWait();
         }
 
         private void HeaderCheckBox_Changed(object sender, RoutedEventArgs e) {
-            PreviewContent();
+            PreviewContentAsync().DoNotWait();
         }
 
         private void PreviewFileContent(string file, int codePage) {
-            Encoding encoding = Encoding.GetEncoding(codePage);
-            string text = ReadFilePreview(file, encoding);
+            var encoding = Encoding.GetEncoding(codePage);
+            var text = ReadFilePreview(file, encoding);
             InputFilePreview.Text = text;
         }
 
@@ -269,10 +274,10 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect.DataImport {
         private async Task ConvertToUtf8Worker(string file, int codePage, bool reportProgress, int nRows = Int32.MaxValue) {
             await TaskUtilities.SwitchToBackgroundThread();
 
-            Encoding encoding = Encoding.GetEncoding(codePage);
+            var encoding = Encoding.GetEncoding(codePage);
             _utf8FilePath = Path.Combine(Path.GetTempPath(), Path.GetFileName(file) + ".utf8");
 
-            int lineCount = 0;
+            var lineCount = 0;
             double progressValue = 0;
 
             using (var sr = new StreamReader(file, encoding, detectEncodingFromByteOrderMarks: true)) {
@@ -317,18 +322,18 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect.DataImport {
         }
 
         private async Task DoDefaultAction() {
-            await VsAppShell.Current.SwitchToMainThreadAsync();
+            await _services.MainThread().SwitchToAsync();
             RunButton.IsEnabled = CancelButton.IsEnabled = false;
             var result = false;
 
             try {
-                int cp = GetSelectedValueAsInt(EncodingComboBox);
+                var cp = GetSelectedValueAsInt(EncodingComboBox);
 
                 var nRowsString = NRowsTextBox.Text;
-                int nrows = Int32.MaxValue;
+                var nrows = Int32.MaxValue;
                 if (!string.IsNullOrWhiteSpace(nRowsString)) {
                     if (!Int32.TryParse(nRowsString, out nrows) || nrows <= 0) {
-                        VsAppShell.Current.ShowErrorMessage(Package.Resources.ImportData_NRowsError);
+                        _services.ShowErrorMessage(Package.Resources.ImportData_NRowsError);
                         return;
                     }
                     nrows++; // for possible header
@@ -352,13 +357,13 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect.DataImport {
         }
 
         private async Task StartReportProgress(string message) {
-            await VsAppShell.Current.SwitchToMainThreadAsync();
+            await _services.MainThread().SwitchToAsync();
             ProgressBarText.Text = message;
             ProgressBar.Value = 0;
         }
 
         private async Task ReportProgress(double value) {
-            await VsAppShell.Current.SwitchToMainThreadAsync();
+            await _services.MainThread().SwitchToAsync();
             ProgressBar.Value = value;
         }
 
@@ -367,7 +372,9 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect.DataImport {
         }
 
         private void RunButton_PreviewKeyUp(object sender, KeyEventArgs e) {
-            DoDefaultAction().DoNotWait();
+            if (e.Key == Key.Enter || e.Key == Key.Space) {
+                DoDefaultAction().DoNotWait();
+            }
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e) {
@@ -375,7 +382,9 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect.DataImport {
         }
 
         private void CancelButton_PreviewKeyUp(object sender, KeyEventArgs e) {
-            Close();
+            if (e.Key == Key.Enter || e.Key == Key.Space) {
+                Close();
+            }
         }
     }
 }

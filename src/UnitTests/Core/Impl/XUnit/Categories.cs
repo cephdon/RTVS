@@ -44,26 +44,46 @@ namespace Microsoft.UnitTests.Core.XUnit {
         }
 
         [ExcludeFromCodeCoverage]
+        public class ConnectionsAttribute : CategoryAttribute {
+            public ConnectionsAttribute() : base("Connections") { }
+        }
+
+        [ExcludeFromCodeCoverage]
+        public class InformationAttribute : CategoryAttribute {
+            public InformationAttribute() : base("Information") { }
+        }
+
+        [ExcludeFromCodeCoverage]
         public static class Md {
             [ExcludeFromCodeCoverage]
             public class ClassifierAttribute : CategoryAttribute {
-                public ClassifierAttribute() : base("Md.Classifier") { }
+                public ClassifierAttribute() : base("Markdown.Classifier") { }
             }
 
             [ExcludeFromCodeCoverage]
             public class TokenizerAttribute : CategoryAttribute {
-                public TokenizerAttribute() : base("Md.Tokenizer") { }
+                public TokenizerAttribute() : base("Markdown.Tokenizer") { }
             }
 
             [ExcludeFromCodeCoverage]
             public class RCodeAttribute : CategoryAttribute {
-                public RCodeAttribute() : base("Md.RCode") { }
+                public RCodeAttribute() : base("Markdown.RCode") { }
+            }
+
+            [ExcludeFromCodeCoverage]
+            public class PreviewAttribute : CategoryAttribute {
+                public PreviewAttribute() : base("Markdown.Preview") { }
             }
         }
 
         [ExcludeFromCodeCoverage]
         public class PlotsAttribute : CategoryAttribute {
             public PlotsAttribute() : base("Plots") { }
+        }
+
+        [ExcludeFromCodeCoverage]
+        public class ContainersAttribute : CategoryAttribute {
+            public ContainersAttribute() : base("Containers") { }
         }
 
         [ExcludeFromCodeCoverage]
@@ -151,6 +171,11 @@ namespace Microsoft.UnitTests.Core.XUnit {
             }
 
             [ExcludeFromCodeCoverage]
+            public class EditorAttribute : CategoryAttribute {
+                public EditorAttribute() : base("R.Editor") { }
+            }
+
+            [ExcludeFromCodeCoverage]
             public class EditorTreeAttribute : CategoryAttribute {
                 public EditorTreeAttribute() : base("R.EditorTree") { }
             }
@@ -201,6 +226,14 @@ namespace Microsoft.UnitTests.Core.XUnit {
             }
 
             [ExcludeFromCodeCoverage]
+            public static class Session { 
+                [ExcludeFromCodeCoverage]
+                public class ApiAttribute : CategoryAttribute {
+                    public ApiAttribute() : base("R.Session.API") { }
+                }
+            }
+
+            [ExcludeFromCodeCoverage]
             public class SettingsAttribute : CategoryAttribute {
                 public SettingsAttribute() : base("R.Settings") { }
             }
@@ -223,6 +256,11 @@ namespace Microsoft.UnitTests.Core.XUnit {
             [ExcludeFromCodeCoverage]
             public class TokenizerAttribute : CategoryAttribute {
                 public TokenizerAttribute() : base("R.Tokenizer") { }
+            }
+
+            [ExcludeFromCodeCoverage]
+            public class LinterAttribute : CategoryAttribute {
+                public LinterAttribute() : base("R.Linter") { }
             }
         }
 
@@ -248,6 +286,12 @@ namespace Microsoft.UnitTests.Core.XUnit {
         public class ReplAttribute : CategoryAttribute {
             public ReplAttribute() : base("Repl") { }
         }
+
+        [ExcludeFromCodeCoverage]
+        public class RoxygenAttribute : CategoryAttribute {
+            public RoxygenAttribute() : base("Roxygen") { }
+        }
+
 
         [ExcludeFromCodeCoverage]
         public class SqlAttribute : CategoryAttribute {
@@ -280,6 +324,19 @@ namespace Microsoft.UnitTests.Core.XUnit {
         [ExcludeFromCodeCoverage]
         public class HtmlAttribute : CategoryAttribute {
             public HtmlAttribute() : base("Html") { }
+        }
+
+        [ExcludeFromCodeCoverage]
+        public class FuzzTestAttribute : CategoryAttribute {
+            public FuzzTestAttribute() : base("FuzzTest") { }
+        }
+
+        [ExcludeFromCodeCoverage]
+        public static class VsPackage {
+            [ExcludeFromCodeCoverage]
+            public class SettingsAttribute : CategoryAttribute {
+                public SettingsAttribute() : base("VS.Package.Settings") { }
+            }
         }
     }
 }

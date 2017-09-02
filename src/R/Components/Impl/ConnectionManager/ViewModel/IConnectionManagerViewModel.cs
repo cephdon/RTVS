@@ -15,16 +15,16 @@ namespace Microsoft.R.Components.ConnectionManager.ViewModel {
         bool IsEditingNew { get; }
         bool IsConnected { get; }
         
-        void Edit(IConnectionViewModel connection);
-        void EditNew();
+        bool TryEdit(IConnectionViewModel connection);
+        bool TryEditNew();
         void CancelEdit();
         void Save(IConnectionViewModel connectionViewModel);
 
         void BrowseLocalPath(IConnectionViewModel connection);
         Task TestConnectionAsync(IConnectionViewModel connection);
-        void CancelTestConnection(IConnectionViewModel connection);
+        void CancelTestConnection();
         bool TryDelete(IConnectionViewModel connection);
 
-        void Connect(IConnectionViewModel connection);
+        void Connect(IConnectionViewModel connection, bool connectToEdited);
     }
 }

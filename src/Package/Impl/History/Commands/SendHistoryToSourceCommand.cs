@@ -3,10 +3,10 @@
 
 using System;
 using System.Collections.Generic;
-using Microsoft.Languages.Editor.Controller.Command;
+using Microsoft.Common.Core.UI.Commands;
+using Microsoft.Languages.Editor.Controllers.Commands;
 using Microsoft.Markdown.Editor.ContentTypes;
 using Microsoft.R.Components.ContentTypes;
-using Microsoft.R.Components.Controller;
 using Microsoft.R.Components.History;
 using Microsoft.R.Components.InteractiveWorkflow;
 using Microsoft.VisualStudio.R.Package.Commands;
@@ -16,12 +16,12 @@ using Microsoft.VisualStudio.Utilities;
 
 namespace Microsoft.VisualStudio.R.Package.History.Commands {
     internal class SendHistoryToSourceCommand : ViewCommand {
-        private readonly IRInteractiveWorkflow _interactiveWorkflow;
+        private readonly IRInteractiveWorkflowVisual _interactiveWorkflow;
         private readonly IActiveWpfTextViewTracker _textViewTracker;
         private readonly List<IContentType> _contentTypes = new List<IContentType>();
-        private readonly IRHistory _history;
+        private readonly IRHistoryVisual _history;
 
-        public SendHistoryToSourceCommand(ITextView textView, IRHistoryProvider historyProvider, IRInteractiveWorkflow interactiveWorkflow, IContentTypeRegistryService contentTypeRegistry, IActiveWpfTextViewTracker textViewTracker)
+        public SendHistoryToSourceCommand(ITextView textView, IRHistoryProvider historyProvider, IRInteractiveWorkflowVisual interactiveWorkflow, IContentTypeRegistryService contentTypeRegistry, IActiveWpfTextViewTracker textViewTracker)
             : base(textView, RGuidList.RCmdSetGuid, RPackageCommandId.icmdSendHistoryToSource, false) {
 
             _textViewTracker = textViewTracker;

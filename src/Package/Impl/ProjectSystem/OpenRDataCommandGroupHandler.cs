@@ -3,22 +3,18 @@
 
 using System;
 using System.Collections.Immutable;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Common.Core.Shell;
+using Microsoft.Common.Core;
+using Microsoft.Common.Core.Services;
+using Microsoft.Common.Core.UI;
 using Microsoft.R.Components.InteractiveWorkflow;
 using Microsoft.R.Host.Client;
 using Microsoft.R.Host.Client.Session;
 using Microsoft.VisualStudio.ProjectSystem;
-using Microsoft.VisualStudio.R.Package.Shell;
 using Microsoft.VisualStudio.Shell;
 using Task = System.Threading.Tasks.Task;
-#if VS14
-using Microsoft.VisualStudio.ProjectSystem.Designers;
-using Microsoft.VisualStudio.ProjectSystem.Utilities;
-#endif
 
 namespace Microsoft.VisualStudio.R.Package.ProjectSystem {
     internal class OpenRDataCommandGroupHandler : IAsyncCommandGroupHandler {
@@ -60,21 +56,20 @@ namespace Microsoft.VisualStudio.R.Package.ProjectSystem {
         protected virtual async Task<bool> TryHandleCommandAsyncInternal(IProjectTree rDataNode) {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
 
-            MessageButtons messageResult = VsAppShell.Current.ShowMessage(string.Format(CultureInfo.CurrentCulture, Resources.LoadWorkspaceIntoGlobalEnvironment, rDataNode.FilePath), MessageButtons.YesNo);
+            var workflow = _workflowProvider.GetOrCreate();
+            var services = workflow.Shell.Services;
+            var messageResult = services.ShowMessage(Resources.LoadWorkspaceIntoGlobalEnvironment.FormatCurrent(rDataNode.FilePath), MessageButtons.YesNo);
             if (messageResult == MessageButtons.No) {
                 return true;
             }
 
-            var session = _workflowProvider.GetOrCreate().RSession;
-            using (var evaluation = await session.BeginEvaluationAsync()) {
-                try {
-                    await evaluation.LoadWorkspaceAsync(rDataNode.FilePath);
-                } catch (RException ex) {
-                    var message = string.Format(CultureInfo.CurrentCulture, Resources.LoadWorkspaceFailedMessageFormat,
-                        rDataNode.FilePath, ex.Message);
-                    VsAppShell.Current.ShowErrorMessage(message);
-                } catch (OperationCanceledException) {
-                }
+            var session = workflow.RSession;
+            try {
+                await session.LoadWorkspaceAsync(rDataNode.FilePath);
+            } catch (RException ex) {
+                var message = Resources.LoadWorkspaceFailedMessageFormat.FormatCurrent(rDataNode.FilePath, ex.Message);
+                services.ShowErrorMessage(message);
+            } catch (OperationCanceledException) {
             }
 
             return true;

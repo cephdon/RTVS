@@ -2,108 +2,99 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System.Diagnostics.CodeAnalysis;
-using System.Windows.Forms;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.Common.Core;
+using Microsoft.Common.Core.Services;
 using Microsoft.Common.Core.Test.Controls;
+using Microsoft.Common.Core.UI.Commands;
 using Microsoft.R.Components.Help;
+using Microsoft.R.Components.Help.Commands;
 using Microsoft.R.Host.Client;
 using Microsoft.UnitTests.Core.Threading;
 using Microsoft.UnitTests.Core.XUnit;
-using Microsoft.VisualStudio.R.Package.Commands;
 using Microsoft.VisualStudio.R.Package.Help;
 using Microsoft.VisualStudio.R.Package.Test;
 using Microsoft.VisualStudio.R.Package.Test.Utility;
-using Microsoft.VisualStudio.R.Packages.R;
 using mshtml;
+using Microsoft.R.Components.InteractiveWorkflow;
 using Xunit;
 
 namespace Microsoft.VisualStudio.R.Interactive.Test.Help {
     [ExcludeFromCodeCoverage]
+    [Category.Interactive]
     [Collection(CollectionNames.NonParallel)]
     public class HelpWindowTest : HostBasedInteractiveTest {
         private const string darkThemeCssColor = "rgb(36,36,36)";
+        private RHostClientHelpTestApp _clientApp;
+        private VsRHostScript _hostScript;
 
-        [Test(Skip = "https://github.com/Microsoft/RTVS/issues/1983")]
-        [Category.Interactive]
-        public void HelpTest() {
-            var clientApp = new RHostClientHelpTestApp();
-                using (var script = new ControlTestScript(typeof(HelpVisualComponent))) {
-                    DoIdle(100);
+        public HelpWindowTest(IServiceContainer services) : base(services, true) {
+            _hostScript = GetScript<VsRHostScript>();
+        }
 
-                    var component = ControlWindow.Component as IHelpVisualComponent;
-                    component.Should().NotBeNull();
+        public override async Task InitializeAsync() {
+            _clientApp = new RHostClientHelpTestApp();
+            await _hostScript.InitializeAsync(_clientApp);
+        }
 
-                    component.VisualTheme = "Dark.css";
-                    clientApp.Component = component;
+        [Test]
+        public async Task HelpTest() {
+            using (new ControlTestScript(typeof(HelpVisualComponent), Services)) {
+                DoIdle(100);
 
-                    ShowHelp("plot", HostScript, clientApp);
-                    clientApp.Uri.IsLoopback.Should().Be(true);
-                    clientApp.Uri.PathAndQuery.Should().Be("/library/graphics/html/plot.html");
+                var component = ControlWindow.Component as IHelpVisualComponent;
+                component.Should().NotBeNull();
 
-                    GetBackgroundColor(component.Browser).Should().Be(darkThemeCssColor);
+                component.VisualTheme = "Dark.css";
+                await UIThreadHelper.Instance.InvokeAsync(() => {
+                    _clientApp.Component = component;
+                });
 
-                    UIThreadHelper.Instance.Invoke(() => {
-                        component.Browser.Refresh();
-                        WaitForDocumentComplete(component.Browser);
-                    });
-                    GetBackgroundColor(component.Browser).Should().Be(darkThemeCssColor);
+                await ShowHelpAsync("plot", _hostScript, _clientApp);
 
-                    component.VisualTheme = "Light.css";
-                    ShowHelp("lm", HostScript, clientApp);
-                    clientApp.Uri.PathAndQuery.Should().Be("/library/stats/html/lm.html");
+                _clientApp.Uri.IsLoopback.Should().Be(true);
+                _clientApp.Uri.PathAndQuery.Should().Be("/library/graphics/html/plot.html");
+                (await GetBackgroundColorAsync(component, _clientApp)).Should().Be(darkThemeCssColor);
 
-                    GetBackgroundColor(component.Browser).Should().Be("white");
+                component.VisualTheme = "Light.css";
+                await ShowHelpAsync("lm", _hostScript, _clientApp);
+                _clientApp.Uri.PathAndQuery.Should().Be("/library/stats/html/lm.html");
 
-                    ExecCommand(clientApp, RPackageCommandId.icmdHelpPrevious);
-                    clientApp.Uri.PathAndQuery.Should().Be("/library/graphics/html/plot.html");
+                (await GetBackgroundColorAsync(component, _clientApp)).Should().Be("white");
 
-                    ExecCommand(clientApp, RPackageCommandId.icmdHelpNext);
-                    clientApp.Uri.PathAndQuery.Should().Be("/library/stats/html/lm.html");
+                await ExecCommandAsync(_clientApp, new HelpPreviousCommand(component));
+                _clientApp.Uri.PathAndQuery.Should().Be("/library/graphics/html/plot.html");
 
-                    ExecCommand(clientApp, RPackageCommandId.icmdHelpHome);
-                    clientApp.Uri.PathAndQuery.Should().Be("/doc/html/index.html");
+                await ExecCommandAsync(_clientApp, new HelpNextCommand(component));
+                _clientApp.Uri.PathAndQuery.Should().Be("/library/stats/html/lm.html");
+
+                await ExecCommandAsync(_clientApp, new HelpHomeCommand(Services));
+                _clientApp.Uri.PathAndQuery.Should().Be("/doc/html/index.html");
             }
         }
 
-        private void ShowHelp(string command, VsRHostScript hostScript, RHostClientHelpTestApp clientApp) {
-            clientApp.Ready = false;
-            hostScript.Session.ExecuteAsync($"rtvs:::show_help({command.ToRStringLiteral()})")
-                .SilenceException<RException>()
-                .DoNotWait();
-            WaitForAppReady(clientApp);
+        private async Task ShowHelpAsync(string command, VsRHostScript hostScript, RHostClientHelpTestApp clientApp) {
+            clientApp.Reset();
+            await hostScript.Session.ExecuteAsync($"rtvs:::show_help({command.ToRStringLiteral()})").SilenceException<RException>();
+            await clientApp.WaitForReadyAndRenderedAsync(DoIdle, nameof(HelpTest));
         }
 
-        private void ExecCommand(RHostClientHelpTestApp clientApp, int commandId) {
-            UIThreadHelper.Instance.Invoke(() => {
-                clientApp.Ready = false;
-                object o = new object();
-                clientApp.Component.Controller.Invoke(RGuidList.RCmdSetGuid, commandId, null, ref o);
-            });
-            WaitForAppReady(clientApp);
+        private async Task ExecCommandAsync(RHostClientHelpTestApp clientApp, IAsyncCommand command) {
+            clientApp.Reset();
+            await UIThreadTools.InUI(command.InvokeAsync);
+            await clientApp.WaitForReadyAndRenderedAsync(DoIdle, nameof(HelpTest));
         }
 
-        private void WaitForAppReady(RHostClientHelpTestApp clientApp) {
-            for (int i = 0; i < 100 && !clientApp.Ready; i++) {
-                DoIdle(200);
-            }
-        }
+        private async Task<string> GetBackgroundColorAsync(IHelpVisualComponent component, RHostClientHelpTestApp clientApp) {
+            var color = "red";
 
-        private void WaitForDocumentComplete(WebBrowser wb) {
-            for (int i = 0; i < 100 && wb.ReadyState != WebBrowserReadyState.Loading; i++) {
-                DoIdle(50);
-            }
-            for (int i = 0; i < 100 && wb.ReadyState != WebBrowserReadyState.Complete; i++) {
-                DoIdle(50);
-            }
-        }
-
-        private string GetBackgroundColor(WebBrowser browser) {
-            string color = "red";
-            UIThreadHelper.Instance.Invoke(() => {
-                IHTMLElement2 body = browser.Document.Body.DomElement as IHTMLElement2;
+            await clientApp.WaitForReadyAndRenderedAsync(DoIdle, nameof(HelpTest));
+            await UIThreadHelper.Instance.InvokeAsync(() => {
+                var body = component.Browser.Document.Body.DomElement as IHTMLElement2;
                 color = body.currentStyle.backgroundColor as string;
             });
+
             return color;
         }
     }

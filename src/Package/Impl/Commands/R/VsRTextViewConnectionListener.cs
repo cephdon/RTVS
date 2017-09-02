@@ -3,12 +3,15 @@
 
 using System.ComponentModel.Composition;
 using Microsoft.Common.Core.Shell;
+using Microsoft.Languages.Editor.ContainedLanguage;
+using Microsoft.Languages.Editor.Text;
 using Microsoft.R.Components.ContentTypes;
 using Microsoft.R.Editor.Commands;
 using Microsoft.VisualStudio.Editor;
 using Microsoft.VisualStudio.R.Package.Editors;
 using Microsoft.VisualStudio.R.Package.Interop;
 using Microsoft.VisualStudio.R.Package.Shell;
+using Microsoft.VisualStudio.R.Packages.R;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
@@ -25,8 +28,8 @@ namespace Microsoft.VisualStudio.R.Package.Commands.R {
         private CommandTargetToOleShim _oleController;
 
         [ImportingConstructor]
-        public VsRTextViewConnectionListener(IVsEditorAdaptersFactoryService adapterService) {
-            _adapterService = adapterService;
+        public VsRTextViewConnectionListener(ICoreShell coreShell) : base(coreShell.Services) {
+            _adapterService = coreShell.GetService<IVsEditorAdaptersFactoryService>();
         }
 
         protected override void OnTextViewGotAggregateFocus(ITextView textView, ITextBuffer textBuffer) {
@@ -36,10 +39,10 @@ namespace Microsoft.VisualStudio.R.Package.Commands.R {
                 // Check if another buffer already attached a command controller to the view.
                 // Don't allow two to be attached, or commands could be run twice.
                 // This currently can only happen with inline diff views.
-                RMainController mainController = RMainController.FromTextView(textView);
+                var mainController = RMainController.FromTextView(textView);
                 if (textBuffer == mainController?.TextBuffer) {
                     // Connect main controller to VS text view filter chain.
-                    OleControllerChain.ConnectController(_adapterService, textView, mainController);
+                    OleControllerChain.ConnectController(Services, textView, mainController);
                 }
             }
             base.OnTextViewGotAggregateFocus(textView, textBuffer);
@@ -59,11 +62,10 @@ namespace Microsoft.VisualStudio.R.Package.Commands.R {
             base.OnTextViewDisconnected(textView, textBuffer);
         }
 
-        protected override void OnTextBufferCreated(ITextBuffer textBuffer) {
-            // Force creations
-            var appShell = VsAppShell.Current;
-            OleControllerChain.InitEditorInstance(textBuffer);
-            base.OnTextBufferCreated(textBuffer);
+        protected override void OnTextBufferCreated(ITextView textView, ITextBuffer textBuffer) {
+            VsAppShell.EnsurePackageLoaded(RGuidList.RPackageGuid);
+            OleControllerChain.InitEditorInstance(textBuffer, Services);
+            base.OnTextBufferCreated(textView, textBuffer);
         }
     }
 }

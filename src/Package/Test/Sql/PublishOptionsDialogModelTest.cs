@@ -1,52 +1,39 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.Common.Core.Shell;
+using Microsoft.Common.Core.Test.Fakes.Shell;
 using Microsoft.R.Components.Application.Configuration;
 using Microsoft.UnitTests.Core.XUnit;
 using Microsoft.VisualStudio.ProjectSystem;
+using Microsoft.VisualStudio.ProjectSystem.Properties;
 using Microsoft.VisualStudio.R.Package.ProjectSystem;
 using Microsoft.VisualStudio.R.Package.ProjectSystem.Configuration;
 using Microsoft.VisualStudio.R.Package.Sql;
 using Microsoft.VisualStudio.R.Package.Sql.Publish;
 using Microsoft.VisualStudio.Shell.Interop;
 using NSubstitute;
-using Microsoft.Common.Core.Settings;
-#if VS14
-using Microsoft.VisualStudio.ProjectSystem.Designers;
-#endif
-#if VS15
-using Microsoft.VisualStudio.ProjectSystem.Properties;
-#endif
 
 namespace Microsoft.VisualStudio.R.Package.Test.Sql {
     [ExcludeFromCodeCoverage]
     [Category.Sql]
     public class PublishOptionsDialogModelTest {
-        private readonly ICoreShell _coreShell;
-        private readonly IProjectSystemServices _pss;
-        private readonly IProjectConfigurationSettingsProvider _pcsp;
-        private readonly IWritableSettingsStorage _storage;
-
-        public PublishOptionsDialogModelTest() {
-            _coreShell = Substitute.For<ICoreShell>();
-            _pss = Substitute.For<IProjectSystemServices>();
-            _pcsp = Substitute.For<IProjectConfigurationSettingsProvider>();
-            _storage = Substitute.For<IWritableSettingsStorage>();
-        }
+        private readonly ICoreShell _coreShell = TestCoreShell.CreateBasic();
+        private readonly IProjectSystemServices _pss = Substitute.For<IProjectSystemServices>();
+        private readonly IProjectConfigurationSettingsProvider _pcsp = Substitute.For<IProjectConfigurationSettingsProvider>();
+        private readonly ISettingsStorage _storage = Substitute.For<ISettingsStorage>();
 
         [Test(ThreadType.UI)]
         public async Task Constructor() {
             var settings = new SqlSProcPublishSettings(_storage);
             var model = await SqlPublishOptionsDialogViewModel.CreateAsync(settings, _coreShell, _pss, _pcsp);
 
-            model.TargetTypeNames.Should().HaveCount(3);
+            model.TargetTypeNames.Should().HaveCount(4);
             model.SelectedTargetTypeIndex.Should().Be(0);
 
             model.QuoteTypeNames.Should().HaveCount(3);
@@ -106,6 +93,10 @@ namespace Microsoft.VisualStudio.R.Package.Test.Sql {
             model.Settings.TargetType.Should().Be(PublishTargetType.Project);
             model.TargetHasName.Should().BeTrue();
 
+            await model.SelectTargetTypeAsync(3);
+            model.Settings.TargetType.Should().Be(PublishTargetType.File);
+            model.TargetHasName.Should().BeFalse();
+
             await model.SelectTargetTypeAsync(0);
             model.Settings.TargetType.Should().Be(PublishTargetType.Dacpac);
             model.TargetHasName.Should().BeFalse();
@@ -113,7 +104,7 @@ namespace Microsoft.VisualStudio.R.Package.Test.Sql {
 
         [Test(ThreadType.UI)]
         public async Task NoDbProjectList() {
-            _storage.GetInteger(SqlSProcPublishSettings.TargetTypeSettingName, (int)PublishTargetType.Dacpac).Returns((int)PublishTargetType.Project);
+            _storage.GetSetting(SqlSProcPublishSettings.TargetTypeSettingName, PublishTargetType.Dacpac).Returns(PublishTargetType.Project);
 
             var settings = new SqlSProcPublishSettings(_storage);
             var model = await SqlPublishOptionsDialogViewModel.CreateAsync(settings, _coreShell, _pss, _pcsp);
@@ -141,8 +132,8 @@ namespace Microsoft.VisualStudio.R.Package.Test.Sql {
             sol.Projects.Returns(projects);
             _pss.GetSolution().Returns(sol);
 
-            _storage.GetInteger(SqlSProcPublishSettings.TargetTypeSettingName, (int)PublishTargetType.Dacpac).Returns((int)PublishTargetType.Project);
-            _storage.GetString(SqlSProcPublishSettings.TargetProjectSettingName, Arg.Any<string>()).Returns(("project2"));
+            _storage.GetSetting(SqlSProcPublishSettings.TargetTypeSettingName, PublishTargetType.Dacpac).Returns(PublishTargetType.Project);
+            _storage.GetSetting(SqlSProcPublishSettings.TargetProjectSettingName, Arg.Any<string>()).Returns(("project2"));
 
             var settings = new SqlSProcPublishSettings(_storage);
             var model = await SqlPublishOptionsDialogViewModel.CreateAsync(settings, _coreShell, _pss, _pcsp);
@@ -160,7 +151,7 @@ namespace Microsoft.VisualStudio.R.Package.Test.Sql {
         public async Task NoDbConnections() {
             ConfigureSettingAccessMock(Enumerable.Empty<IConfigurationSetting>());
 
-            _storage.GetInteger(SqlSProcPublishSettings.TargetTypeSettingName, (int)PublishTargetType.Dacpac).Returns((int)PublishTargetType.Database);
+            _storage.GetSetting(SqlSProcPublishSettings.TargetTypeSettingName, PublishTargetType.Dacpac).Returns(PublishTargetType.Database);
 
             var settings = new SqlSProcPublishSettings(_storage);
             var model = await SqlPublishOptionsDialogViewModel.CreateAsync(settings, _coreShell, _pss, _pcsp);
@@ -193,8 +184,8 @@ namespace Microsoft.VisualStudio.R.Package.Test.Sql {
 
             ConfigureSettingAccessMock(new IConfigurationSetting[] { s1, s4, s2, s3 });
 
-            _storage.GetInteger(SqlSProcPublishSettings.TargetTypeSettingName, (int)PublishTargetType.Dacpac).Returns((int)PublishTargetType.Database);
-            _storage.GetString(SqlSProcPublishSettings.TargetDatabaseConnectionSettingName, Arg.Any<string>()).Returns(("dbConn2_String"));
+            _storage.GetSetting(SqlSProcPublishSettings.TargetTypeSettingName, PublishTargetType.Dacpac).Returns(PublishTargetType.Database);
+            _storage.GetSetting(SqlSProcPublishSettings.TargetDatabaseConnectionSettingName, Arg.Any<string>()).Returns(("dbConn2_String"));
 
             var settings = new SqlSProcPublishSettings(_storage);
             var model = await SqlPublishOptionsDialogViewModel.CreateAsync(settings, _coreShell, _pss, _pcsp);
@@ -235,11 +226,6 @@ namespace Microsoft.VisualStudio.R.Package.Test.Sql {
                 return VSConstants.S_OK;
             });
             _pss.GetSelectedProject<IVsHierarchy>().Returns(hier);
-
-            _coreShell.When(cs => cs.DispatchOnUIThread(Arg.Any<Action>())).Do(c => {
-                var action = (Action)c.Args()[0];
-                action();
-            });
         }
     }
 }

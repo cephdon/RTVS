@@ -2,10 +2,11 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
-using System.ComponentModel.Design;
 using System.Runtime.InteropServices;
 using Microsoft.Common.Core;
+using Microsoft.Common.Core.Services;
 using Microsoft.R.Components.Help;
+using Microsoft.R.Components.Help.Commands;
 using Microsoft.R.Components.InteractiveWorkflow;
 using Microsoft.R.Host.Client;
 using Microsoft.VisualStudio.Imaging;
@@ -16,6 +17,7 @@ using Microsoft.VisualStudio.R.Packages.R;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Task = System.Threading.Tasks.Task;
+using static System.FormattableString;
 
 namespace Microsoft.VisualStudio.R.Package.Help {
     [Guid(WindowGuidString)]
@@ -23,15 +25,20 @@ namespace Microsoft.VisualStudio.R.Package.Help {
         public const string WindowGuidString = "9E909526-A616-43B2-A82B-FD639DCD40CB";
         public static Guid WindowGuid { get; } = new Guid(WindowGuidString);
 
-        public HelpWindowPane() {
+        public HelpWindowPane(IServiceContainer services): base(services) {
             Caption = Resources.HelpWindowCaption;
             BitmapImageMoniker = KnownMonikers.StatusHelp;
-            ToolBar = new CommandID(RGuidList.RCmdSetGuid, RPackageCommandId.helpWindowToolBarId);
+            ToolBar = new System.ComponentModel.Design.CommandID(RGuidList.RCmdSetGuid, RPackageCommandId.helpWindowToolBarId);
         }
 
         protected override void OnCreate() {
-            Component = new HelpVisualComponent { Container = this };
-            ToolBarCommandTarget = new CommandTargetToOleShim(null, Component.Controller);
+            Component = new HelpVisualComponent(Services) { Container = this };
+            var controller = new AsyncCommandController()
+                .AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdHelpHome, new HelpHomeCommand(Services))
+                .AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdHelpNext, new HelpNextCommand(Component))
+                .AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdHelpPrevious, new HelpPreviousCommand(Component))
+                .AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdHelpRefresh, new HelpRefreshCommand(Component));
+            ToolBarCommandTarget = new CommandTargetToOleShim(null, controller);
             base.OnCreate();
         }
 
@@ -47,7 +54,7 @@ namespace Microsoft.VisualStudio.R.Package.Help {
         }
 
         public override IVsSearchTask CreateSearch(uint dwCookie, IVsSearchQuery pSearchQuery, IVsSearchCallback pSearchCallback) {
-            return new HelpSearchTask(dwCookie, pSearchQuery, pSearchCallback);
+            return new HelpSearchTask(dwCookie, pSearchQuery, pSearchCallback, Services);
         }
 
         private sealed class HelpSearchTask : VsSearchTask {
@@ -56,10 +63,10 @@ namespace Microsoft.VisualStudio.R.Package.Help {
             private readonly IVsSearchCallback _callback;
             private readonly IRInteractiveWorkflowProvider _workflowProvider;
 
-            public HelpSearchTask(uint dwCookie, IVsSearchQuery pSearchQuery, IVsSearchCallback pSearchCallback)
+            public HelpSearchTask(uint dwCookie, IVsSearchQuery pSearchQuery, IVsSearchCallback pSearchCallback, IServiceContainer services)
                 : base(dwCookie, pSearchQuery, pSearchCallback) {
                 _callback = pSearchCallback;
-                _workflowProvider = VsAppShell.Current.ExportProvider.GetExportedValue<IRInteractiveWorkflowProvider>();
+                _workflowProvider = services.GetService<IRInteractiveWorkflowProvider>();
             }
 
             protected override void OnStartSearch() {
@@ -74,7 +81,7 @@ namespace Microsoft.VisualStudio.R.Package.Help {
 
             private Task SearchAsync(string searchString) {
                 var session = _workflowProvider.GetOrCreate().RSession;
-                return session.ExecuteAsync($"rtvs:::show_help({searchString.ToRStringLiteral()})");
+                return session.ExecuteAsync(Invariant($"rtvs:::show_help({searchString.ToRStringLiteral()})"));
             }
 
 

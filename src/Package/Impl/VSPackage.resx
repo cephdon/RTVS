@@ -117,15 +117,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="106" xml:space="preserve">
-    <value>R</value>
-  </data>
-  <data name="107" xml:space="preserve">
-    <value>Markdown</value>
-  </data>
-  <data name="150" xml:space="preserve">
-    <value>Advanced</value>
-  </data>
   <data name="200" xml:space="preserve">
     <value>R Editor</value>
   </data>
@@ -138,20 +129,20 @@
   <data name="20136" xml:space="preserve">
     <value>Advanced</value>
   </data>
-  <data name="20137" xml:space="preserve">
-    <value>Options for automatic formatting and case preferences for all tags, checking tag syntax, paste behavior, outline mode, absolute or static positioning, and Design view settings.</value>
-  </data>
-  <data name="20138" xml:space="preserve">
-    <value>Options for statement completion, word wrap, and line number display.</value>
+  <data name="20139" xml:space="preserve">
+    <value>Lint</value>
+    <comment>Do not localize (common tool name)</comment>
   </data>
   <data name="300" xml:space="preserve">
-    <value>R Studio Project Files (*.rproj);*.rproj</value>
+    <value>RStudio Project Files (*.rproj);*.rproj</value>
+    <comment>"RStudio" is a trademark</comment>
   </data>
   <data name="3001" xml:space="preserve">
     <value>R Script</value>
   </data>
   <data name="3002" xml:space="preserve">
     <value>R Markdown</value>
+    <comment>Do not localize (programming language name)</comment>
   </data>
   <data name="3003" xml:space="preserve">
     <value>R  Documentation</value>
@@ -168,11 +159,18 @@
   <data name="3007" xml:space="preserve">
     <value>Stored Procedure with R</value>
   </data>
+  <data name="3008" xml:space="preserve">
+    <value>R Settings</value>
+  </data>
+  <data name="301" xml:space="preserve">
+    <value>R Project</value>
+  </data>
   <data name="3011" xml:space="preserve">
     <value>R script is a text file containing same commands that can be entered on the command line of R</value>
   </data>
   <data name="3012" xml:space="preserve">
     <value>R Markdown is an authoring format that enables easy creation of dynamic documents, presentations, and reports from R</value>
+    <comment>'R Markdown' is a common name</comment>
   </data>
   <data name="3013" xml:space="preserve">
     <value>Generic R Documentation file </value>
@@ -191,6 +189,9 @@
   </data>
   <data name="3018" xml:space="preserve">
     <value>File that holds R application settings</value>
+  </data>
+  <data name="302" xml:space="preserve">
+    <value>A project for creating a new R working directory</value>
   </data>
   <data name="3111" xml:space="preserve">
     <value>Script.R</value>
@@ -217,20 +218,23 @@
   <data name="400" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Resources\Package.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="500" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>resources\rapplication.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="501" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Images\RFile.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>resources\rfile.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="502" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>templates\itemtemplates\emptyrmd\rmdfile.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>resources\rmarkdownfile.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="503" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Resources\RdFile.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>resources\rdocumentationfile.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="504" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Resources\DatabaseProject.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>resources\sql.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="505" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Images\SqlRScript.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+    <value>resources\procedure.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="6000" xml:space="preserve">
     <value>Options for statement completion, word wrap, and line-number display.</value>
@@ -249,23 +253,26 @@
   </data>
   <data name="8001" xml:space="preserve">
     <value>Data Science (R) - RStudio shortcuts</value>
+    <comment>"RStudio" is a trademark</comment>
   </data>
   <data name="8002" xml:space="preserve">
     <value>Data Science (R) with RStudio shortcuts</value>
+    <comment>"RStudio" is a trademark</comment>
   </data>
   <data name="8010" xml:space="preserve">
     <value>Customizes the environment to improve the visibility of commands and options that are most relevant to doing data science and machine learning work using R.</value>
   </data>
   <data name="8011" xml:space="preserve">
     <value>Provides RStudio-compatible keyboard shortcuts for many functions in R Tools for Visual Studio.</value>
+    <comment>"RStudio" is a trademark</comment>
   </data>
   <data name="8012" xml:space="preserve">
     <value>Customizes the environment to improve the visibility of commands and options that are most relevant to doing data science and machine learning work using R. Includes RStudio-compatible keyboard shortcuts.</value>
   </data>
   <data name="9001" xml:space="preserve">
-    <value>Stored Procedure with R</value>
+    <value>SQL Stored Procedure with R</value>
   </data>
-  <data name="RFile" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>images\rfile.ico;System.Drawing.Icon, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="9002" xml:space="preserve">
+    <value>SQL script for Stored Procedure with R</value>
   </data>
 </root>

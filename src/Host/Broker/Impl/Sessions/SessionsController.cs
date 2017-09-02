@@ -8,11 +8,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Common.Core.Security;
+using Microsoft.Common.Core;
 using Microsoft.R.Host.Broker.Interpreters;
 using Microsoft.R.Host.Broker.Pipes;
 using Microsoft.R.Host.Broker.Security;
 using Microsoft.R.Host.Protocol;
+using Microsoft.Extensions.Logging;
 
 namespace Microsoft.R.Host.Broker.Sessions {
     [Authorize(Policy = Policies.RUser)]
@@ -20,10 +21,12 @@ namespace Microsoft.R.Host.Broker.Sessions {
     public class SessionsController : Controller {
         private readonly InterpreterManager _interpManager;
         private readonly SessionManager _sessionManager;
+        private readonly ILogger<Session> _sessionLogger;
 
-        public SessionsController(InterpreterManager interpManager, SessionManager sessionManager) {
+        public SessionsController(InterpreterManager interpManager, SessionManager sessionManager, ILogger<Session> sessionLogger) {
             _interpManager = interpManager;
             _sessionManager = sessionManager;
+            _sessionLogger = sessionLogger;
         }
 
         [HttpGet]
@@ -35,9 +38,6 @@ namespace Microsoft.R.Host.Broker.Sessions {
                 return Task.FromResult<IActionResult>(new ApiErrorResult(BrokerApiError.NoRInterpreters));
             }
 
-            string profilePath = User.FindFirst(Claims.RUserProfileDir)?.Value;
-            var password = User.FindFirst(Claims.Password)?.Value.ToSecureString();
-
             Interpreter interp;
             if (!string.IsNullOrEmpty(request.InterpreterId)) {
                 interp = _interpManager.Interpreters.FirstOrDefault(ip => ip.Id == request.InterpreterId);
@@ -45,11 +45,11 @@ namespace Microsoft.R.Host.Broker.Sessions {
                     return Task.FromResult<IActionResult>(new ApiErrorResult(BrokerApiError.InterpreterNotFound));
                 }
             } else {
-                interp = _interpManager.Interpreters.First();
+                interp = _interpManager.Interpreters.Latest();
             }
 
             try {
-                var session = _sessionManager.CreateSession(User.Identity, id, interp, password, profilePath, request.CommandLineArguments);
+                var session = _sessionManager.CreateSession(User, id, interp, request.CommandLineArguments, request.IsInteractive);
                 return Task.FromResult<IActionResult>(new ObjectResult(session.Info));
             } catch (Exception ex) {
                 return Task.FromResult<IActionResult>(new ApiErrorResult(BrokerApiError.UnableToStartRHost, ex.Message));
@@ -60,7 +60,8 @@ namespace Microsoft.R.Host.Broker.Sessions {
         public IActionResult Delete(string id) {
             var session = _sessionManager.GetSession(User.Identity, id);
             if (session == null) {
-                return NotFound();
+                _sessionLogger.LogDebug(Resources.Debug_SessionNotFound.FormatInvariant(id));
+                return Ok();
             }
 
             try {
@@ -88,7 +89,7 @@ namespace Microsoft.R.Host.Broker.Sessions {
                 return new ApiErrorResult(BrokerApiError.PipeAlreadyConnected);
             }
 
-            return new WebSocketPipeAction(id, pipe);
+            return new WebSocketPipeAction(id, pipe, _sessionLogger);
         }
     }
 }

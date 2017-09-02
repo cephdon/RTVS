@@ -3,8 +3,8 @@
 
 using System;
 using System.Linq;
-using Microsoft.Languages.Editor.Controller.Command;
-using Microsoft.R.Components.Controller;
+using Microsoft.Common.Core.UI.Commands;
+using Microsoft.Languages.Editor.Controllers.Commands;
 using Microsoft.R.Components.History;
 using Microsoft.VisualStudio.Text.Editor;
 

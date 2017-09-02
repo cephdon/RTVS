@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Common.Core;
 using Microsoft.Common.Core.Tasks;
 using Microsoft.R.Host.Protocol;
 using Newtonsoft.Json.Linq;
@@ -30,13 +27,16 @@ namespace Microsoft.R.Host.Client {
         }
 
         private abstract class Request<T> : Request {
-            protected readonly TaskCompletionSourceEx<T> CompletionSource = new TaskCompletionSourceEx<T>();
+            protected readonly TaskCompletionSource<T> CompletionSource = new TaskCompletionSource<T>();
 
             public Task<T> Task => CompletionSource.Task;
 
-            protected Request(RHost host, Message message, CancellationToken cancellationToken)
-                : base(host, message) {
-                cancellationToken.Register(() => CompletionSource.TrySetCanceled(null, cancellationToken));
+            protected Request(RHost host, Message message, CancellationToken cancellationToken) : base(host, message) {
+                if (cancellationToken.CanBeCanceled) {
+                    CompletionSource
+                        .RegisterForCancellation(cancellationToken)
+                        .UnregisterOnCompletion(CompletionSource.Task);
+                }
             }
         }
     }

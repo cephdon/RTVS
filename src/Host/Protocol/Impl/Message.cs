@@ -6,19 +6,20 @@ using System.Text;
 using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
+using Microsoft.Common.Core;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using static System.FormattableString;
 
 namespace Microsoft.R.Host.Protocol {
     public class Message {
-        private static readonly MD5 _hash = MD5.Create();
-        public readonly ulong Id;
-        public readonly ulong RequestId;
-        public readonly string Name;
+        private static readonly SHA512 _hash = SHA512.Create();
+        public ulong Id { get; private set; }
+        public ulong RequestId { get; private set; }
+        public string Name { get; private set; }
 
-        public readonly JArray Json;
-        public readonly byte[] Blob;
+        public JArray Json { get; private set; }
+        public byte[] Blob { get; private set; }
 
         public bool IsRequest => RequestId == ulong.MaxValue;
 
@@ -36,20 +37,23 @@ namespace Microsoft.R.Host.Protocol {
             Blob = blob ?? new byte[0];
         }
 
-        public Message(byte[] data) {
+        private Message() { }
+
+        public static Message Parse(byte[] data) {
+            Message message = new Message();
             try {
                 int offset = 0;
-                Id = BitConverter.ToUInt64(data, offset);
+                message.Id = BitConverter.ToUInt64(data, offset);
                 offset += sizeof(ulong);
 
-                RequestId = BitConverter.ToUInt64(data, offset);
+                message.RequestId = BitConverter.ToUInt64(data, offset);
                 offset += sizeof(ulong);
 
                 int term = Array.IndexOf<byte>(data, 0, offset);
                 if (term < 0) {
                     throw new IndexOutOfRangeException();
                 }
-                Name = Encoding.UTF8.GetString(data, offset, term - offset);
+                message.Name = Encoding.UTF8.GetString(data, offset, term - offset);
                 offset = term + 1;
 
                 term = Array.IndexOf<byte>(data, 0, offset);
@@ -57,16 +61,18 @@ namespace Microsoft.R.Host.Protocol {
                     throw new IndexOutOfRangeException();
                 }
                 string json = Encoding.UTF8.GetString(data, offset, term - offset);
-                Json = (JArray)JsonConvert.DeserializeObject(json);
+                message.Json = Microsoft.Common.Core.Json.Json.ParseToken(json) as JArray ?? new JArray();
                 offset = term + 1;
 
-                Blob = new byte[data.Length - offset];
-                if (Blob.Length > 0) {
-                    Array.Copy(data, offset, Blob, 0, Blob.Length);
+                message.Blob = new byte[data.Length - offset];
+                if (message.Blob.Length > 0) {
+                    Array.Copy(data, offset, message.Blob, 0, message.Blob.Length);
                 }
-            } catch (Exception ex) when (ex is IndexOutOfRangeException || ex is ArgumentOutOfRangeException) {
+            } catch (Exception ex) when (ex.IsProtocolException() || ex is JsonException) {
                 throw ProtocolError($"Malformed message", BitConverter.ToString(data));
             }
+
+            return message;
         }
 
         public byte[] ToBytes() {
@@ -88,20 +94,20 @@ namespace Microsoft.R.Host.Protocol {
 
         public override string ToString() {
             string result;
-            result = $"#{Id}#";
+            result = Invariant($"#{Id}#");
             if (RequestId > 0 && RequestId < ulong.MaxValue) {
-                result += $":#{RequestId}#";
+                result += Invariant($":#{RequestId}#");
             }
 
             string blobString;
             if (Blob.Length > 100) {
                 var hashString = BitConverter.ToString(_hash.ComputeHash(Blob));
-                blobString = $"<blob length=\"{Blob.Length}\" md5=\"{hashString}\" />";
+                blobString = Invariant($"<blob length=\"{Blob.Length}\" sha512=\"{hashString}\" />");
             } else {
-                blobString = $"<blob content=\"{BitConverter.ToString(Blob)}\" />";
+                blobString = Invariant($"<blob content=\"{BitConverter.ToString(Blob)}\" />");
             }
             
-            result += $" {Name} {Json} {blobString}";
+            result += Invariant($" {Name} {Json} {blobString}");
             return result;
         }
 
@@ -135,7 +141,7 @@ namespace Microsoft.R.Host.Protocol {
 
         public JToken GetArgument(int i, string name, JTokenType expectedType1, JTokenType expectedType2) {
             var arg = this[i];
-            if (arg.Type != expectedType1 && arg.Type != expectedType2) {
+            if (arg.Type != expectedType1 && arg.Type != expectedType2 && expectedType1 != JTokenType.String && expectedType2 != JTokenType.String) {
                 throw ProtocolError($"{name} must be {expectedType1} or {expectedType2}:", this);
             }
             return arg;

@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License. See LICENSE in the project root for license information.
+
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -9,13 +12,11 @@ using System.Windows.Media;
 
 namespace Microsoft.Common.Wpf.Controls {
     public class Overlay {
-        public static UIElement GetAdornerContent(FrameworkElement frameworkElement) {
-            return (UIElement)frameworkElement.GetValue(AdornerContentProperty);
-        }
+        public static UIElement GetAdornerContent(FrameworkElement frameworkElement) 
+            => (UIElement)frameworkElement.GetValue(AdornerContentProperty);
 
-        public static void SetAdornerContent(FrameworkElement frameworkElement, UIElement value) {
-            frameworkElement.SetValue(AdornerContentProperty, value);
-        }
+        public static void SetAdornerContent(FrameworkElement frameworkElement, UIElement value) 
+            => frameworkElement.SetValue(AdornerContentProperty, value);
 
         public static readonly DependencyProperty AdornerContentProperty =
             DependencyProperty.RegisterAttached("AdornerContent", typeof(UIElement), typeof(Overlay),
@@ -72,9 +73,8 @@ namespace Microsoft.Common.Wpf.Controls {
             .Where(dpd => dpd != null && ((dpd.Metadata as FrameworkPropertyMetadata)?.AffectsRender == true || dpd.DependencyProperty == UIElement.VisibilityProperty))
             .ToList();
 
-        private static PropertyDescriptorCollection GetPropertyDescriptors(DependencyObject obj) {
-            return TypeDescriptor.GetProperties(obj, new Attribute[] { new PropertyFilterAttribute(PropertyFilterOptions.Valid) });
-        }
+        private static PropertyDescriptorCollection GetPropertyDescriptors(DependencyObject obj) 
+            => TypeDescriptor.GetProperties(obj, new Attribute[] { new PropertyFilterAttribute(PropertyFilterOptions.Valid) });
 
         private class OverlayAdorner : Adorner, IDisposable {
             private readonly AdornerLayer _layer;
@@ -123,7 +123,9 @@ namespace Microsoft.Common.Wpf.Controls {
             }
 
             private void OnValueChanged(object sender, EventArgs eventArgs) {
-                _layer.Update(AdornedElement);
+                if (VisualParent != null) {
+                    _layer.Update(AdornedElement);
+                }
             }
 
             public void Dispose() {

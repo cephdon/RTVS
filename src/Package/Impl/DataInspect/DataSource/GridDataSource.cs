@@ -5,33 +5,47 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Common.Core;
 using Microsoft.Common.Core.Logging;
-using Microsoft.R.Components.InteractiveWorkflow;
+using Microsoft.Common.Core.Shell;
 using Microsoft.R.Host.Client;
 using Microsoft.VisualStudio.R.Package.Shell;
 using static System.FormattableString;
 
 namespace Microsoft.VisualStudio.R.Package.DataInspect.DataSource {
     internal sealed class GridDataSource {
-        public static async Task<IGridData<string>> GetGridDataAsync(IRSession rSession, string expression, GridRange? gridRange, ISortOrder sortOrder = null) {
-            await TaskUtilities.SwitchToBackgroundThread();
+        private readonly IRSession _session;
+        private string _expression;
+        private string _rows;
+        private string _columns;
+        private string _rowSelector;
+        private GridData _gridData;
 
-            string rows = gridRange?.Rows.ToRString();
-            string columns = gridRange?.Columns.ToRString();
-            string rowSelector = (sortOrder != null && !sortOrder.IsEmpty) ? sortOrder.GetRowSelector() : "";
-            string expr = Invariant($"rtvs:::grid_data({expression}, {rows}, {columns}, {rowSelector})");
-
-            using (var evaluator = await rSession.BeginEvaluationAsync()) {
-                try {
-                    return await evaluator.EvaluateAsync<GridData>(expr, REvaluationKind.Normal);
-                } catch (RException ex) {
-                    var message = Invariant($"Grid data evaluation failed:{Environment.NewLine}{ex.Message}");
-                    await VsAppShell.Current.Services.Log.WriteAsync(LogVerbosity.Normal, MessageCategory.Error, message);
-                    return null;
-                }
-            }
+        public GridDataSource(IRSession session) {
+            _session = session;
         }
 
-        public static Task<IGridData<string>> GetGridDataAsync(string expression, GridRange? gridRange, ISortOrder sortOrder = null) =>
-            GetGridDataAsync(VsAppShell.Current.ExportProvider.GetExportedValue<IRInteractiveWorkflowProvider>().GetOrCreate().RSession, expression, gridRange, sortOrder);
+        public async Task<IGridData<string>> GetGridDataAsync(string expression, GridRange? gridRange, ISortOrder sortOrder = null) {
+            await TaskUtilities.SwitchToBackgroundThread();
+
+            var rows = gridRange?.Rows.ToRString();
+            var columns = gridRange?.Columns.ToRString();
+            var rowSelector = (sortOrder != null && !sortOrder.IsEmpty) ? sortOrder.GetRowSelector() : "";
+
+            if (_gridData != null && _expression == expression && _rows == rows && _columns == columns && _rowSelector == rowSelector) {
+                return _gridData;
+            }
+
+            var expr = Invariant($"rtvs:::grid_data({expression}, {rows}, {columns}, {rowSelector})");
+            try {
+                _gridData = await _session.EvaluateAsync<GridData>(expr, REvaluationKind.Normal);
+                _expression = expression;
+                _rows = rows;
+                _columns = columns;
+                _rowSelector = rowSelector;
+            } catch (RException ex) {
+                var message = Invariant($"Grid data evaluation failed:{Environment.NewLine}{ex.Message}");
+                VsAppShell.Current.Log().Write(LogVerbosity.Normal, MessageCategory.Error, message);
+            }
+            return _gridData;
+        }
     }
 }

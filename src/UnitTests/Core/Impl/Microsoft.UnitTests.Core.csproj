@@ -16,17 +16,24 @@
     <SccAuxPath>SAK</SccAuxPath>
     <SccProvider>SAK</SccProvider>
   </PropertyGroup>
-  <Import Project="..\..\..\R.Settings.targets" />
-  <PropertyGroup>
-    <BaseIntermediateOutputPath>$(ObjDirectory)</BaseIntermediateOutputPath>
-    <BaseOutputPath>$(BinDirectory)</BaseOutputPath>
-    <IntermediateOutputPath>$(BaseIntermediateOutputPath)\$(Configuration)\$(AssemblyName)\</IntermediateOutputPath>
-    <OutputPath>$(BaseOutputPath)\$(Configuration)\</OutputPath>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <Import Project="..\..\..\R.Settings.props" />
   <ItemGroup>
+    <Compile Include="$(SourceDirectory)AssemblyVersionInfo.cs">
+      <Link>Properties\AssemblyVersionInfo.cs</Link>
+    </Compile>
     <Compile Include="..\..\..\GlobalAssemblyInfo.cs">
       <Link>Properties\GlobalAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="Threading\TestMainThread.cs" />
+    <Compile Include="XUnit\TaskObserver.cs" />
+    <Compile Include="XUnit\VsAssemblyLoaderAttribute.cs" />
+    <Compile Include="XUnit\XunitTestEnvironment.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="project.json" />
@@ -49,10 +56,11 @@
     <Compile Include="FluentAssertions\FluentAssertionExtensions.cs" />
     <Compile Include="FluentAssertions\GivenSelectorExtensions.cs" />
     <Compile Include="FluentAssertions\ObjectAssertionsExtensions.cs" />
-    <Compile Include="FluentAssertions\TaskAssertions.cs" />
+    <Compile Include="FluentAssertions\TaskAssertionsBase.cs" />
     <Compile Include="FluentAssertions\TaskAssertionsExtensions.cs" />
     <Compile Include="Mef\CatalogFactory.cs" />
     <Compile Include="Mef\PartMetadataAttributeNames.cs" />
+    <Compile Include="NativeMethods.cs" />
     <Compile Include="NSubstitute\SubstituteExtensions.cs" />
     <Compile Include="NSubstitute\SubstituteHelper.cs" />
     <Compile Include="NSubstitute\Mef\MefSubstituteBuilder.AddValueFactory.cs" />
@@ -62,6 +70,8 @@
     <Compile Include="NSubstitute\Mef\NSubstituteCompositionContainer.cs" />
     <Compile Include="NSubstitute\Mef\NSubstituteExportProvider.cs" />
     <Compile Include="Paths.cs" />
+    <Compile Include="ProcessUtils.cs" />
+    <Compile Include="Random.cs" />
     <Compile Include="Threading\ControlledTaskScheduler.cs" />
     <Compile Include="Threading\ControlledTaskSchedulerExtensions.cs" />
     <Compile Include="Threading\ParallelTools.cs" />
@@ -84,22 +94,22 @@
     <Compile Include="XUnit\AssemblyFixtureAttribute.cs" />
     <Compile Include="Mef\IExportProvider.cs" />
     <Compile Include="XUnit\IMethodFixture.cs" />
+    <Compile Include="XUnit\IMethodFixtureFactory.cs" />
     <Compile Include="XUnit\InlineArrayAttribute.cs" />
     <Compile Include="XUnit\InlineArrayDiscoverer.cs" />
-    <Compile Include="XUnit\MefCatalogFixture.cs" />
+    <Compile Include="XUnit\IntRangeAttribute.cs" />
+    <Compile Include="XUnit\IntRangeDiscoverer.cs" />
+    <Compile Include="XUnit\ITestInput.cs" />
     <Compile Include="XUnit\MessageBusInjections\ExecuteBeforeAfterAttributesMessageBusInjection.cs" />
     <Compile Include="XUnit\MessageBusInjections\ITestAfterStartingBeforeFinishedInjection.cs" />
     <Compile Include="XUnit\MessageBusInjections\ITestCaseAfterStartingBeforeFinishedInjection.cs" />
     <Compile Include="XUnit\MessageBusInjections\VerifyGlobalProviderMessageBusInjection.cs" />
     <Compile Include="XUnit\MessageBusOverride.cs" />
-    <Compile Include="XUnit\AssemblyMefCatalogFixture.cs" />
     <Compile Include="XUnit\MethodFixtures\ContainerHostMethodFixture.cs" />
-    <Compile Include="XUnit\MethodFixtures\MethodFixtureBase.cs" />
-    <Compile Include="XUnit\MethodFixtures\TaskObserverMethodFixture.cs" />
+    <Compile Include="XUnit\MethodFixtureTypes.cs" />
     <Compile Include="XUnit\TestAttribute.cs" />
     <Compile Include="XUnit\TestCase.cs" />
     <Compile Include="XUnit\TestCaseRunner.cs" />
-    <Compile Include="XUnit\TestCaseRunnerWithMethodFixtures.cs" />
     <Compile Include="XUnit\TestDiscoverer.cs" />
     <Compile Include="XUnit\TestForTypesAttribute.cs" />
     <Compile Include="XUnit\TestForTypesDiscoverer.cs" />
@@ -111,27 +121,27 @@
     <Compile Include="XUnit\TestFrameworkTypeDiscoverer.cs" />
     <Compile Include="XUnit\TestInvoker.cs" />
     <Compile Include="XUnit\MethodFixtures\TestMethodFixture.cs" />
+    <Compile Include="XUnit\TestMethodRunner.cs" />
     <Compile Include="XUnit\TestParameters.cs" />
     <Compile Include="XUnit\TestRunner.cs" />
     <Compile Include="XUnit\TestTraceListener.cs" />
     <Compile Include="XUnit\ThreadType.cs" />
+    <Compile Include="XUnit\ThreadTypeAttribute.cs" />
     <Compile Include="XUnit\TraceFailException.cs" />
     <Compile Include="XUnit\UnitTestTraitDiscoverer.cs" />
     <Compile Include="XUnit\TestForTypesTestCase.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Common\Core\Impl\Microsoft.Common.Core.csproj">
+    <ProjectReference Include="..\..\..\Common\Core\Impl\Microsoft.R.Common.Core.csproj">
       <Project>{8D408909-459F-4853-A36C-745118F99869}</Project>
       <Name>Microsoft.Common.Core</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\..\Windows\Core\Impl\Microsoft.R.Common.Core.Windows.csproj">
+      <Project>{01e3d8c2-9c24-492b-b13b-c6d7068b6bf8}</Project>
+      <Name>Microsoft.R.Common.Core.Windows</Name>
+    </ProjectReference>
   </ItemGroup>
-  <ItemGroup>
-    <FilesToSign Include="$(OutputPath)\$(AssemblyName).dll">
-      <Authenticode>Microsoft</Authenticode>
-      <StrongName>StrongName</StrongName>
-    </FilesToSign>
-  </ItemGroup>
-  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SourceDirectory)R.Build.Version.targets" />
+  <Import Project="$(SourceDirectory)R.Build.Sign.targets" />
 </Project>

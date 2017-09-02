@@ -4,18 +4,20 @@
 using System;
 using System.Diagnostics;
 using System.Threading;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.R.Host.Broker.Startup;
 
 namespace Microsoft.R.Host.Broker.Lifetime {
     public class LifetimeManager {
         private readonly LifetimeOptions _options;
+        private readonly IApplicationLifetime _applicationLifetime;
         private readonly ILogger _logger;
 
         private CancellationTokenSource _cts;
 
-        public LifetimeManager(IOptions<LifetimeOptions> options, ILogger<LifetimeManager> logger) {
+        public LifetimeManager(IApplicationLifetime applicationLifetime, IOptions<LifetimeOptions> options, ILogger<LifetimeManager> logger) {
+            _applicationLifetime = applicationLifetime;
             _options = options.Value;
             _logger = logger;
         }
@@ -29,14 +31,14 @@ namespace Microsoft.R.Host.Broker.Lifetime {
                     process.EnableRaisingEvents = true;
                 } catch (ArgumentException) {
                     _logger.LogCritical(Resources.Critical_ParentProcessNotFound, pid);
-                    Program.Exit();
+                    _applicationLifetime.StopApplication();
                     return;
                 }
 
                 _logger.LogInformation(Resources.Info_MonitoringParentProcess, pid);
                 process.Exited += delegate {
                     _logger.LogInformation(Resources.Info_ParentProcessExited, pid);
-                    Program.Exit();
+                    _applicationLifetime.StopApplication();
                 };
             }
 
@@ -49,13 +51,17 @@ namespace Microsoft.R.Host.Broker.Lifetime {
             }
 
             var cts = new CancellationTokenSource(_options.PingTimeout.Value);
-            cts.Token.Register(() => {
-                if (_cts == cts) {
-                    _logger.LogCritical(Resources.Critical_PingTimeOut);
-                    Program.Exit();
-                }
-            });
-            _cts = cts; 
+            cts.Token.Register(PingTimeout, cts);
+            var oldCts = Interlocked.Exchange(ref _cts, cts); 
+            oldCts?.Dispose();
+        }
+
+        private void PingTimeout(object state) {
+            var cts = (CancellationTokenSource) state;
+            if (_cts == cts) {
+                _logger.LogCritical(Resources.Critical_PingTimeOut);
+                _applicationLifetime.StopApplication();
+            }
         }
     }
 }

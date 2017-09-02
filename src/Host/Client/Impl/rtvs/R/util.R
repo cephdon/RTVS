@@ -19,6 +19,18 @@ send_request_and_get_response <- function(name, ...) {
     call_embedded('send_request_and_get_response', name, list(...))
 }
 
+loc_message <- function(id, ...) {
+    send_notification("!LocMessage", id, list(...))
+}
+
+loc_warning <- function(id, ...) {
+    send_notification("!LocWarning", id, list(...))
+}
+
+loc_askYesNo <- function(id, ...) {
+    send_request_and_get_response('?LocYesNo', id, list(...))[[1]]
+}
+
 memory_connection <- function(max_length = NA, expected_length = NA, overflow_suffix = '', eof_marker = '') {
     call_embedded('memory_connection', max_length, expected_length, overflow_suffix, eof_marker)
 }
@@ -57,6 +69,10 @@ toJSON <- function(obj) {
 
 create_blob <- function(obj) {
     call_embedded("create_blob", obj)
+}
+
+create_compressed_blob <- function(obj) {
+    call_embedded("create_compressed_blob", obj)
 }
 
 get_blob <- function(blob_id) {
@@ -158,12 +174,13 @@ export_to_csv <- function(expr, sep, dec) {
     filepath <- tempfile('export_', fileext = '.csv')
     on.exit(unlink(filepath))
     write.table(res, file = filepath, qmethod = 'double', col.names = NA, sep = sep, dec = dec)
-    create_blob(readBin(filepath, 'raw', file.info(filepath)$size))
+    create_compressed_blob(readBin(filepath, 'raw', file.info(filepath)$size))
 }
 
 # Helper to export current plot to image
 export_to_image <- function(device_id, plot_id, device, width, height, resolution) {
     prev_device_num <- dev.cur()
+    graphics.ide.setactivedeviceid(device_id)
     graphics.ide.selectplot(device_id, plot_id, force_render = FALSE)
     filepath <- tempfile('plot_', fileext = '.dat')
     on.exit(unlink(filepath))
@@ -174,12 +191,14 @@ export_to_image <- function(device_id, plot_id, device, width, height, resolutio
 }
 
 # Helper to export current plot to pdf
-export_to_pdf <- function(device_id, plot_id, width, height) {
+export_to_pdf <- function(device_id, plot_id, pdf_device, width, height, ...) {
     prev_device_num <- dev.cur()
+    graphics.ide.setactivedeviceid(device_id)
     graphics.ide.selectplot(device_id, plot_id, force_render = FALSE)
     filepath <- tempfile('plot_', fileext = '.pdf')
     on.exit(unlink(filepath))
-    dev.copy(device = pdf, file = filepath, width = width, height = height)
+
+    dev.copy(device = pdf_device, file = filepath, width = width, height = height, ...)
     dev.off()
     dev.set(prev_device_num)
     create_blob(readBin(filepath, 'raw', file.info(filepath)$size))
@@ -238,13 +257,20 @@ package_update <- function(package_name, lib_path) {
 }
 
 # Helper to download a file from remote host
-fetch_file <- function(file_path) {
-    invisible(call_embedded('fetch_file', path.expand(file_path)));
+fetch_file <- function(remotePath, localPath = '', silent = FALSE) {
+    invisible(call_embedded('fetch_file', path.expand(remotePath), path.expand(localPath), silent));
 }
 
 save_to_project_folder <- function(blob_id, project_name, dest_dir) {
     temp_dir <- paste0(tempdir(), '/RTVSProjects');
     invisible(call_embedded('save_to_project_folder', blob_id, project_name, path.expand(dest_dir), temp_dir));
+}
+
+save_to_temp_folder <- function (blob_id, file_name) {
+    temp_file <- paste0(tempdir(), '/', file_name);
+    unlink(temp_file);
+    writeBin(get_blob(blob_id), temp_file);
+    temp_file;
 }
 
 autosave_filename <- '~/.Autosave.RData';
@@ -254,10 +280,9 @@ query_reload_autosave <- function() {
         return(FALSE);
     }
 
-    msg <- 'Previous R session terminated unexpectedly, and its global workspace has been saved to image "%s". Would you like to reload it?';
-    res <- winDialog('yesno', sprintf(msg, autosave_filename));
+    res <- loc_askYesNo('rtvs_SessionTerminatedUnexpectedly', autosave_filename)[[1]];
 
-    if (identical(res, 'YES')) {
+    if (identical(res, 'Y')) {
         # Use try instead of tryCatch, so that any errors are printed as usual.
         loaded <- FALSE;
         try({
@@ -266,34 +291,72 @@ query_reload_autosave <- function() {
         });
 
         if (loaded) {
-            message(sprintf('Loaded workspace from autosaved image "%s".\n', autosave_filename));
+            loc_warning('rtvs_LoadedWorkspace', autosave_filename);
             # If we loaded the file successfully, it's safe to delete it - this session contains the reloaded
             # state now, and if there's another disconnect, it will be autosaved again.
             return(TRUE);
         } else {
-            warning(sprintf('Failed to load workspace from autosaved image "%s".\n', autosave_filename), call. = FALSE, immediate. = TRUE);
+            loc_warning('rtvs_FailedToLoadWorkspace', autosave_filename);
             return(FALSE);
         }
     } else {
-        msg <- 'Delete autosaved workspace image "%s"?';
-        res <- winDialog('yesno', sprintf(msg, autosave_filename));
-        return(identical(res, 'YES'));
+        res <-loc_askYesNo('rtvs_ConfirmDeleteWorkspace', autosave_filename)[[1]];
+        return(identical(res, 'Y'));
     }
 }
 
-disconnect_callback <- function() {
-    message(sprintf('Autosaving workspace to image "%s" ...', autosave_filename));
+save_state <- function() {
+    # This function runs when client is already disconnected, so loc_message() cannot be used, since it requires
+    # a connected client to provide translated strings. However, since messages are not user-visible and are
+    # here for logging purposes only, they don't need to be localized in the first place. Also, they 
+    # cannot be localized since 'message' and 'sprintf' depend on currely set R locale which may or 
+    # may not be the same as current client UI locale (VS UI language is set indedendently from OS and R).
+    message(sprintf('Autosaving workspace to image "%s" ...', autosave_filename), appendLF = FALSE);
     save.image(autosave_filename);
-    message(' workspace saved successfully.\n');
+    message(' workspace saved successfully.');
 }
 
 enable_autosave <- function(delete_existing) {
     try({
-        set_disconnect_callback(disconnect_callback);
+        set_disconnect_callback(save_state);
 
         if (delete_existing) {
-            message(sprintf('Deleting autosaved workspace image "%s".\n', autosave_filename));
+            loc_warning('rtvs_DeletingWorkspace', autosave_filename);
             unlink(autosave_filename);
         }
     });
+}
+
+exists_on_path_windows <- function(filename) {
+    folders <- strsplit(Sys.getenv('PATH'), ';')[[1]];
+    folders <- gsub("\\", "/", folders, fixed = TRUE);
+    folders <- sub("(\\/$)", "", folders);
+    folders <- paste0(folders, "/", filename);
+    for (f in folders) {
+        if (file.exists(f)) {
+            return(TRUE);
+        }
+    }
+    return(FALSE);
+}
+
+exists_on_path_posix <- function(filename) {
+    folders <- strsplit(Sys.getenv('PATH'), ':')[[1]];
+    folders <- paste0(folders, "/", filename);
+    for (f in folders) {
+        if (file.exists(f)) {
+            return(TRUE);
+        }
+    }
+    return(FALSE);
+}
+
+exists_on_path <- if(.Platform$OS.type == "windows") exists_on_path_windows else exists_on_path_posix;
+
+executable_exists_on_path <- function(filename_no_extension) {
+    filename <- filename_no_extension;
+    if(.Platform$OS.type == "windows"){
+        filename <- paste0(filename_no_extension, ".exe");
+    }
+    return(exists_on_path(filename));
 }

@@ -6,29 +6,27 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
 using FluentAssertions;
-using Microsoft.R.Components.InteractiveWorkflow;
+using Microsoft.Common.Core.Services;
+using Microsoft.R.Host.Client.Test.Script;
 using Microsoft.UnitTests.Core.XUnit;
 using Microsoft.VisualStudio.R.Package.DataInspect;
 using Microsoft.VisualStudio.R.Package.DataInspect.DataSource;
-using Microsoft.VisualStudio.R.Package.Shell;
+using NSubstitute;
 using Xunit;
 
 namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
     [ExcludeFromCodeCoverage]
+    [Category.Variable.Explorer]
     [Collection(CollectionNames.NonParallel)]   // required for tests using R Host 
-    public sealed class EvaluationWrapperTest : IAsyncLifetime {
-        private VariableRHostScript _hostScript;
+    public sealed class EvaluationWrapperTest : HostBasedInteractiveTest {
+        private readonly VariableRHostScript _hostScript;
+        private readonly GridDataSource _dataSource;
 
-        public Task InitializeAsync() {
-            var workflow = VsAppShell.Current.ExportProvider.GetExportedValue<IRInteractiveWorkflowProvider>().GetOrCreate();
-            _hostScript = new VariableRHostScript(workflow.RSessions);
-            return workflow.Connections.ConnectAsync(workflow.Connections.RecentConnections[0]);
+        public EvaluationWrapperTest(IServiceContainer services): base(new VariableRHostScript(services), services) {
+            _hostScript = GetScript<VariableRHostScript>();
+            _dataSource = new GridDataSource(_hostScript.Session);
         }
 
-        public Task DisposeAsync() {
-            _hostScript.Dispose();
-            return Task.CompletedTask;
-        }
 
         // TODO: RStudio difference
         //    value.integer.1   RS 1L                    RTVS just 1
@@ -39,29 +37,30 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
 
         };
 
-        object[,] factorTestData = new object[,] {
-            { "factor.5 <- factor(1:5)", new VariableExpectation() { Name = "factor.5", Value = "Factor w/ 5 levels \"1\",\"2\",\"3\",\"4\",..: 1 2 3 4 5", TypeName = "integer", Class = "factor", HasChildren = true, CanShowDetail = false } },
-            { "factor.ordered <- ordered(c('5','4','100','2','1'))", new VariableExpectation() { Name = "factor.ordered", Value = "Ord.factor w/ 5 levels \"1\"<\"100\"<\"2\"<..: 5 4 2 3 1", TypeName = "integer", Class = "ordered, factor", HasChildren = true, CanShowDetail = false } },
-            { "factor.gender <- factor(c('male','female','male','male','female'))", new VariableExpectation() { Name = "factor.gender", Value = "Factor w/ 2 levels \"female\",\"male\": 2 1 2 2 1", TypeName = "integer", Class = "factor", HasChildren = true, CanShowDetail = false } },
+        readonly object[,] factorTestData = new object[,] {
+            { "factor.5 <- factor(1:5)", new VariableExpectation() { Name = "factor.5", Value = "Factor w/ 5 levels \"1\",\"2\",\"3\",\"4\",..: 1 2 3 4 5", TypeName = "integer", Class = "factor", HasChildren = true, CanShowDetail = true } },
+            { "factor.ordered <- ordered(c('5','4','100','2','1'))", new VariableExpectation() { Name = "factor.ordered", Value = "Ord.factor w/ 5 levels \"1\"<\"100\"<\"2\"<..: 5 4 2 3 1", TypeName = "integer", Class = "ordered, factor", HasChildren = true, CanShowDetail = true } },
+            { "factor.gender <- factor(c('male','female','male','male','female'))", new VariableExpectation() { Name = "factor.gender", Value = "Factor w/ 2 levels \"female\",\"male\": 2 1 2 2 1", TypeName = "integer", Class = "factor", HasChildren = true, CanShowDetail = true } },
         };
 
-        object[,] formulaTestData32 = new object[,] {
+        readonly object[,] formulaTestData32 = new object[,] {
             { "class(fo <- y~x1 * x2)", new VariableExpectation() { Name = "fo", Value = "Class 'formula' length 3 y ~ x1 * x2", TypeName = "language", Class = "formula", HasChildren = true, CanShowDetail = true } },
         };
 
-        object[,] formulaTestData33 = new object[,] {
+        readonly object[,] formulaTestData33 = new object[,] {
             { "class(fo <- y~x1 * x2)", new VariableExpectation() { Name = "fo", Value = "Class 'formula'  language y ~ x1 * x2", TypeName = "language", Class = "formula", HasChildren = true, CanShowDetail = true } },
         };
 
-        object[,] expressionTestData = new object[,] {
+        readonly object[,] expressionTestData = new object[,] {
             { "expr <- expression('print(\"hello\")', '1+2', 'print(\"world\")', 'ls()')", new VariableExpectation() { Name = "expr", Value = "expression(\"print(\\\"hello\\\")\", \"1+2\", \"print(\\\"world\\\")\") ...", TypeName = "expression", Class = "expression", HasChildren = true, CanShowDetail = false } },
         };
 
-        object[,] listTestData = new object[,] {
-            { "list.length1 <- list(c(1, 2, 3))", new VariableExpectation() { Name = "list.length1", Value = "List of 1", TypeName = "list", Class = "list", HasChildren = true, CanShowDetail = true } },
+        readonly object[,] listTestData = new object[,] {
+            { "list.length1 <- list(c(1, 2, 3))", new VariableExpectation() { Name = "list.length1", Value = "List of 1", TypeName = "list", Class = "list", HasChildren = true, CanShowDetail = false } },
+            { "list.length3 <- list(1, 2, 3)", new VariableExpectation() { Name = "list.length3", Value = "List of 3", TypeName = "list", Class = "list", HasChildren = true, CanShowDetail = true } },
         };
 
-        object[,] activeBindingTestData = new object[,] {
+        readonly object[,] activeBindingTestData = new object[,] {
             { "makeActiveBinding('z.activebinding1', function() 123, .GlobalEnv);", new VariableExpectation() { Name = "z.activebinding1", Value = "<active binding>", TypeName = "<active binding>", Class = "<active binding>", HasChildren = false, CanShowDetail = false } },
         };
 
@@ -95,37 +94,31 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
         }
 
         [Test]
-        [Category.Variable.Explorer]
         public Task FactorTest() {
             return RunTest(factorTestData);
         }
 
         [Test(Skip = "https://github.com/Microsoft/RTVS/issues/2271")]
-        [Category.Variable.Explorer]
         public Task FormulaTest() {
-            return RunTest(VariableRHostScript.RVersion < new Version(3, 3) ? formulaTestData32 : formulaTestData33);
+            return RunTest(RHostScript.RVersion < new Version(3, 3) ? formulaTestData32 : formulaTestData33);
         }
 
         [Test]
-        [Category.Variable.Explorer]
         public Task ExpressionTest() {
             return RunTest(expressionTestData);
         }
 
         [Test]
-        [Category.Variable.Explorer]
         public Task ListTest() {
             return RunTest(listTestData);
         }
 
         [Test]
-        [Category.Variable.Explorer]
         public Task ActiveBindingTest() {
             return RunTest(activeBindingTestData);
         }
 
         [Test]
-        [Category.Variable.Explorer]
         public async Task TruncateGrandChildrenTest() {
             await _hostScript.EvaluateAsync("x.truncate.children<-1:100");
             var children = await _hostScript.GlobalEnvrionment.GetChildrenAsync();
@@ -138,7 +131,6 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
         }
 
         [Test]
-        [Category.Variable.Explorer]
         public async Task Matrix10x100Test() {
             var script = "matrix.10x100 <-matrix(1:1000, 10, 100)";
             var expectation = new VariableExpectation() {
@@ -155,18 +147,18 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
                 expectation,
                 VariableRHostScript.AssertEvaluationWrapper);
 
-            Range rowRange = new Range(0, 2);
-            Range columnRange = new Range(1, 3);
-            var grid = await GridDataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
+            var rowRange = new Range(0, 2);
+            var columnRange = new Range(1, 3);
+            var grid = await _dataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
 
             grid.ColumnHeader.Range.Should().Be(columnRange);
-            grid.ColumnHeader[1].Should().Be("[,2]");
-            grid.ColumnHeader[2].Should().Be("[,3]");
-            grid.ColumnHeader[3].Should().Be("[,4]");
+            grid.ColumnHeader[1].Should().Be("V2");
+            grid.ColumnHeader[2].Should().Be("V3");
+            grid.ColumnHeader[3].Should().Be("V4");
 
             grid.RowHeader.Range.Should().Be(rowRange);
-            grid.RowHeader[0].Should().Be("[1,]");
-            grid.RowHeader[1].Should().Be("[2,]");
+            grid.RowHeader[0].Should().Be("1");
+            grid.RowHeader[1].Should().Be("2");
 
             grid.Grid.Range.Should().Be(new GridRange(rowRange, columnRange));
             grid.Grid[0, 1].Should().Be("11");
@@ -178,7 +170,6 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
         }
 
         [Test]
-        [Category.Variable.Explorer]
         public async Task MatrixNamedTest() {
             var script = "matrix.named <- matrix(1:10, 2, 5, dimnames = list(r = c('r1', 'r2'), c = c('a', 'b', 'c', 'd', 'e')))";
             var expectation = new VariableExpectation() { Name = "matrix.named", Value = "int [1:2, 1:5] 1 2 3 4 5 6 7 8 9 10", TypeName = "integer", Class = "matrix", HasChildren = true, CanShowDetail = true };
@@ -190,7 +181,7 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
 
             Range rowRange = new Range(0, 2);
             Range columnRange = new Range(2, 3);
-            var grid = await GridDataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
+            var grid = await _dataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
 
             grid.ColumnHeader.Range.Should().Be(columnRange);
             grid.ColumnHeader[2].Should().Be("c");
@@ -211,40 +202,6 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
         }
 
         [Test]
-        [Category.Variable.Explorer]
-        public async Task MatrixNATest() {
-            var script = "matrix.na.header <- matrix(c(1, 2, 3, 4, NA, NaN, 7, 8, 9, 10), 2, 5, dimnames = list(r = c('r1', NA), c = c('a', 'b', NA, 'd', NA)))";
-            var expectation = new VariableExpectation() { Name = "matrix.na.header", Value = "num [1:2, 1:5] 1 2 3 4 NA NaN 7 8 9 10", TypeName = "double", Class = "matrix", HasChildren = true, CanShowDetail = true };
-
-            var evaluation = (VariableViewModel)await _hostScript.EvaluateAndAssert(
-                script,
-                expectation,
-                VariableRHostScript.AssertEvaluationWrapper);
-
-            Range rowRange = new Range(0, 2);
-            Range columnRange = new Range(2, 3);
-            var grid = await GridDataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
-
-            grid.ColumnHeader.Range.Should().Be(columnRange);
-            grid.ColumnHeader[2].Should().Be("[,1]");
-            grid.ColumnHeader[3].Should().Be("d");
-            grid.ColumnHeader[4].Should().Be("[,3]");
-
-            grid.RowHeader.Range.Should().Be(rowRange);
-            grid.RowHeader[0].Should().Be("r1");
-            grid.RowHeader[1].Should().Be("[2,]");
-
-            grid.Grid.Range.Should().Be(new GridRange(rowRange, columnRange));
-            grid.Grid[0, 2].Should().Be("NA");
-            grid.Grid[0, 3].Should().Be("7");
-            grid.Grid[0, 4].Should().Be("9");
-            grid.Grid[1, 2].Should().Be("NaN");
-            grid.Grid[1, 3].Should().Be("8");
-            grid.Grid[1, 4].Should().Be("10");
-        }
-
-        [Test]
-        [Category.Variable.Explorer]
         public async Task MatrixOneRowColumnTest() {
             var script1 = "matrix.singlerow <- matrix(1:3, nrow=1);";
             var expectation1 = new VariableExpectation() {
@@ -271,17 +228,17 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
                 expectation1,
                 VariableRHostScript.AssertEvaluationWrapper);
 
-            Range rowRange = new Range(0, 1);
-            Range columnRange = new Range(0, 3);
-            var grid = await GridDataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
+            var rowRange = new Range(0, 1);
+            var columnRange = new Range(0, 3);
+            var grid = await _dataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
 
             grid.ColumnHeader.Range.Should().Be(columnRange);
-            grid.ColumnHeader[0].Should().Be("[,1]");
-            grid.ColumnHeader[1].Should().Be("[,2]");
-            grid.ColumnHeader[2].Should().Be("[,3]");
+            grid.ColumnHeader[0].Should().Be("V1");
+            grid.ColumnHeader[1].Should().Be("V2");
+            grid.ColumnHeader[2].Should().Be("V3");
 
             grid.RowHeader.Range.Should().Be(rowRange);
-            grid.RowHeader[0].Should().Be("[1,]");
+            grid.RowHeader[0].Should().Be("1");
 
             grid.Grid.Range.Should().Be(new GridRange(rowRange, columnRange));
             grid.Grid[0, 0].Should().Be("1");
@@ -296,15 +253,15 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
 
             rowRange = new Range(0, 3);
             columnRange = new Range(0, 1);
-            grid = await GridDataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
+            grid = await _dataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
 
             grid.ColumnHeader.Range.Should().Be(columnRange);
-            grid.ColumnHeader[0].Should().Be("[,1]");
+            grid.ColumnHeader[0].Should().Be("V1");
 
             grid.RowHeader.Range.Should().Be(rowRange);
-            grid.RowHeader[0].Should().Be("[1,]");
-            grid.RowHeader[1].Should().Be("[2,]");
-            grid.RowHeader[2].Should().Be("[3,]");
+            grid.RowHeader[0].Should().Be("1");
+            grid.RowHeader[1].Should().Be("2");
+            grid.RowHeader[2].Should().Be("3");
 
             grid.Grid.Range.Should().Be(new GridRange(rowRange, columnRange));
             grid.Grid[0, 0].Should().Be("1");
@@ -313,7 +270,6 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
         }
 
         [Test]
-        [Category.Variable.Explorer]
         public async Task MatrixOnlyRowNameTest() {
             var script = "matrix.rowname.na <- matrix(c(1,2,3,4), nrow=2, ncol=2);rownames(matrix.rowname.na)<-c(NA, 'row2');";
             var expectation = new VariableExpectation() { Name = "matrix.rowname.na", Value = "num [1:2, 1:2] 1 2 3 4", TypeName = "double", Class = "matrix", HasChildren = true, CanShowDetail = true };
@@ -323,13 +279,13 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
                 expectation,
                 VariableRHostScript.AssertEvaluationWrapper);
 
-            Range rowRange = new Range(0, 2);
-            Range columnRange = new Range(0, 2);
-            var grid = await GridDataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
+            var rowRange = new Range(0, 2);
+            var columnRange = new Range(0, 2);
+            var grid = await _dataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
 
             grid.ColumnHeader.Range.Should().Be(columnRange);
-            grid.ColumnHeader[0].Should().Be("[,1]");
-            grid.ColumnHeader[1].Should().Be("[,2]");
+            grid.ColumnHeader[0].Should().Be("V1");
+            grid.ColumnHeader[1].Should().Be("V2");
 
             grid.RowHeader.Range.Should().Be(rowRange);
             grid.RowHeader[0].Should().Be("[1,]");
@@ -343,7 +299,6 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
         }
 
         [Test]
-        [Category.Variable.Explorer]
         public async Task MatrixOnlyColumnNameTest() {
             var script = "matrix.colname.na <- matrix(1:6, nrow=2, ncol=3);colnames(matrix.colname.na)<-c('col1',NA,'col3');";
             var expectation = new VariableExpectation() { Name = "matrix.colname.na", Value = "int [1:2, 1:3] 1 2 3 4 5 6", TypeName = "integer", Class = "matrix", HasChildren = true, CanShowDetail = true };
@@ -353,9 +308,9 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
                 expectation,
                 VariableRHostScript.AssertEvaluationWrapper);
 
-            Range rowRange = new Range(0, 2);
-            Range columnRange = new Range(0, 3);
-            var grid = await GridDataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
+            var rowRange = new Range(0, 2);
+            var columnRange = new Range(0, 3);
+            var grid = await _dataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
 
             grid.ColumnHeader.Range.Should().Be(columnRange);
             grid.ColumnHeader[0].Should().Be("col1");
@@ -363,8 +318,8 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
             grid.ColumnHeader[2].Should().Be("col3");
 
             grid.RowHeader.Range.Should().Be(rowRange);
-            grid.RowHeader[0].Should().Be("[1,]");
-            grid.RowHeader[1].Should().Be("[2,]");
+            grid.RowHeader[0].Should().Be("1");
+            grid.RowHeader[1].Should().Be("2");
 
             grid.Grid.Range.Should().Be(new GridRange(rowRange, columnRange));
             grid.Grid[0, 0].Should().Be("1");
@@ -376,7 +331,6 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
         }
 
         [Test]
-        [Category.Variable.Explorer]
         public async Task MatrixLargeCellTest() {
             var script = "matrix.largecell <- matrix(list(as.double(1:5000), 2, 3, 4), nrow = 2, ncol = 2);";
             var expectation = new VariableExpectation() { Name = "matrix.largecell", Value = "List of 4", TypeName = "list", Class = "matrix", HasChildren = true, CanShowDetail = true };
@@ -386,9 +340,9 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
                 expectation,
                 VariableRHostScript.AssertEvaluationWrapper);
 
-            Range rowRange = new Range(0, 1);
-            Range columnRange = new Range(0, 1);
-            var grid = await GridDataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
+            var rowRange = new Range(0, 1);
+            var columnRange = new Range(0, 1);
+            var grid = await _dataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
 
             grid.ColumnHeader.Range.Should().Be(columnRange);
             grid.RowHeader.Range.Should().Be(rowRange);
@@ -398,7 +352,6 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
         }
 
         [Test]
-        [Category.Variable.Explorer]
         public async Task DataFrameTest() {
             var script = "df.test <- data.frame(101:103, c('\"a', 'b', 'c'))";
             var expectation = new VariableExpectation() { Name = "df.test", Value = "3 obs. of  2 variables", TypeName = "list", Class = "data.frame", HasChildren = true, CanShowDetail = true };
@@ -408,9 +361,9 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
                 expectation,
                 VariableRHostScript.AssertEvaluationWrapper);
 
-            Range rowRange = new Range(0, 3);
-            Range columnRange = new Range(0, 2);
-            var grid = await GridDataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
+            var rowRange = new Range(0, 3);
+            var columnRange = new Range(0, 2);
+            var grid = await _dataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
 
             grid.ColumnHeader.Range.Should().Be(columnRange);
             grid.ColumnHeader[0].Should().Be("X101.103");
@@ -431,7 +384,7 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
 
             // single column
             columnRange = new Range(1, 1);
-            grid = await GridDataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
+            grid = await _dataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
             grid.ColumnHeader.Range.Should().Be(columnRange);
             grid.ColumnHeader[1].Should().Be("c....a....b....c..");
 
@@ -447,7 +400,6 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
         }
 
         [Test]
-        [Category.Variable.Explorer]
         public async Task DataFrameLangTest() {
             var script = "df.lang <- data.frame(col1=c('a','中'),col2=c('國','d'),row.names = c('マイクロソフト','row2'));";
             var expectation = new VariableExpectation() { Name = "df.lang", Value = "2 obs. of  2 variables", TypeName = "list", Class = "data.frame", HasChildren = true, CanShowDetail = true };
@@ -457,9 +409,9 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
                 expectation,
                 VariableRHostScript.AssertEvaluationWrapper);
 
-            Range rowRange = new Range(0, 2);
-            Range columnRange = new Range(0, 2);
-            var grid = await GridDataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
+            var rowRange = new Range(0, 2);
+            var columnRange = new Range(0, 2);
+            var grid = await _dataSource.GetGridDataAsync(evaluation.Expression, new GridRange(rowRange, columnRange));
 
             grid.ColumnHeader.Range.Should().Be(columnRange);
             grid.ColumnHeader[0].Should().Be("col1");
@@ -477,7 +429,6 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
         }
 
         [Test]
-        [Category.Variable.Explorer]
         public async Task DataFrameManyColumnTest() {
             var script = "df.manycolumn<-data.frame(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30);";
             var expectation = new VariableExpectation() { Name = "df.manycolumn", Value = "1 obs. of  30 variables", TypeName = "list", Class = "data.frame", HasChildren = true, CanShowDetail = true };
@@ -491,7 +442,6 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
         }
 
         [Test]
-        [Category.Variable.Explorer]
         public async Task PromiseTest() {
             var script = "e <- (function(x, y, z) base::environment())(1,,3)";
             var expectation = new VariableExpectation() { Name = "e", Value = "<environment:", TypeName = "environment", Class = "environment", HasChildren = true, CanShowDetail = false };
@@ -512,7 +462,6 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
         }
 
         [Test]
-        [Category.Variable.Explorer]
         public async Task DoesNotExist() {
             // This is the equivalent of what we get when we fetch a variable
             // for a data grid after that variable is no longer available (rm or reset).
@@ -521,7 +470,7 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
             evaluationResult.Name.Should().BeNull();
             evaluationResult.Expression.Should().Be("idonotexist");
 
-            var model = new VariableViewModel(evaluationResult, null);
+            var model = new VariableViewModel(evaluationResult, Substitute.For<IServiceContainer>());
             model.TypeName.Should().BeNull();
             model.Value.Should().BeNull();
         }
@@ -534,7 +483,6 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
         };
 
         [Test]
-        [Category.Variable.Explorer]
         public Task ArrayTest() {
             return RunTest(arrayTestData);
         }
@@ -553,15 +501,14 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
         };
 
         [Test]
-        [Category.Variable.Explorer]
         public Task FunctionTest() {
             return RunTest(functionTestData);
         }
 
         private async Task RunTest(object[,] testData) {
-            int testCount = testData.GetLength(0);
+            var testCount = testData.GetLength(0);
 
-            for (int i = 0; i < testCount; i++) {
+            for (var i = 0; i < testCount; i++) {
                 await _hostScript.EvaluateAndAssert(
                     (string)testData[i, 0],
                     (VariableExpectation)testData[i, 1],

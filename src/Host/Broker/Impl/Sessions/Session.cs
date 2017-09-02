@@ -3,29 +3,33 @@
 
 using System;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
-using System.Security;
+using System.Security.Claims;
 using System.Security.Principal;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Common.Core;
 using Microsoft.Common.Core.Logging;
 using Microsoft.Common.Core.OS;
 using Microsoft.Extensions.Logging;
 using Microsoft.R.Host.Broker.Interpreters;
 using Microsoft.R.Host.Broker.Pipes;
-using Microsoft.R.Host.Broker.Startup;
+using Microsoft.R.Host.Broker.Security;
+using Microsoft.R.Host.Broker.Services;
 using Microsoft.R.Host.Protocol;
+using static System.FormattableString;
 
 namespace Microsoft.R.Host.Broker.Sessions {
     public class Session {
-        private const string RHostExe = "Microsoft.R.Host.exe";
-
+        private readonly IRHostProcessService _processService;
+        private readonly IApplicationLifetime _applicationLifetime;
+        private readonly bool _isInteractive;
         private readonly ILogger _sessionLogger;
-        private Process _process;
-        private MessagePipe _pipe;
+        private readonly MessagePipe _pipe;
+        private readonly ClaimsPrincipal _principal;
         private volatile IMessagePipeEnd _hostEnd;
+        private IProcess _process;
 
         public SessionManager Manager { get; }
 
@@ -40,22 +44,21 @@ namespace Microsoft.R.Host.Broker.Sessions {
 
         public string CommandLineArguments { get; }
 
-        private volatile SessionState _state;
+        private int _state;
 
         public SessionState State {
-            get {
-                return _state;
-            }
+            get => (SessionState)_state;
             set {
-                var oldState = _state;
-                _state = value;
-                StateChanged?.Invoke(this, new SessionStateChangedEventArgs(oldState, value));
+                var oldState = (SessionState)Interlocked.Exchange(ref _state, (int)value);
+                if (oldState != value) {
+                    StateChanged?.Invoke(this, new SessionStateChangedEventArgs(oldState, value));
+                }
             }
         }
 
         public event EventHandler<SessionStateChangedEventArgs> StateChanged;
 
-        public Process Process => _process;
+        public IProcess Process => _process;
 
         public SessionInfo Info => new SessionInfo {
             Id = Id,
@@ -64,110 +67,56 @@ namespace Microsoft.R.Host.Broker.Sessions {
             State = State,
         };
 
-        internal Session(SessionManager manager, IIdentity user, string id, Interpreter interpreter, string commandLineArguments, ILogger sessionLogger, ILogger messageLogger) {
+        internal Session(SessionManager manager
+            , IRHostProcessService processService
+            , IApplicationLifetime applicationLifetime
+            , ILogger sessionLogger
+            , ILogger messageLogger
+            , ClaimsPrincipal principal
+            , Interpreter interpreter
+            , string id
+            , string commandLineArguments
+            , bool isInteractive) {
+            _principal = principal;
             Manager = manager;
             Interpreter = interpreter;
-            User = user;
+            User = principal.Identity;
             Id = id;
             CommandLineArguments = commandLineArguments;
+            _processService = processService;
+            _applicationLifetime = applicationLifetime;
+            _isInteractive = isInteractive;
             _sessionLogger = sessionLogger;
 
             _pipe = new MessagePipe(messageLogger);
         }
 
-        public void StartHost(SecureString password, string profilePath, ILogger outputLogger, LogVerbosity verbosity) {
+        public void StartHost(string logFolder, ILogger outputLogger, LogVerbosity verbosity) {
             if (_hostEnd != null) {
                 throw new InvalidOperationException("Host process is already running");
             }
 
-            string brokerPath = Path.GetDirectoryName(typeof(Program).Assembly.GetAssemblyPath());
-            string rhostExePath = Path.Combine(brokerPath, RHostExe);
-            string arguments = $"--rhost-name \"{Id}\" --rhost-log-verbosity {(int)verbosity} {CommandLineArguments}";
-            var username = new StringBuilder(NativeMethods.CREDUI_MAX_USERNAME_LENGTH + 1);
-            var domain = new StringBuilder(NativeMethods.CREDUI_MAX_PASSWORD_LENGTH + 1);
-
-            ProcessStartInfo psi = new ProcessStartInfo(rhostExePath) {
-                UseShellExecute = false,
-                CreateNoWindow = false,
-                Arguments = arguments,
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                LoadUserProfile = true
-            };
-            
+            string profilePath = _principal.FindFirst(Claims.RUserProfileDir)?.Value;
             var useridentity = User as WindowsIdentity;
-            if (useridentity != null && WindowsIdentity.GetCurrent().User != useridentity.User && password != null) {
-                uint error = NativeMethods.CredUIParseUserName(User.Name, username, username.Capacity, domain, domain.Capacity);
-                if (error != 0) {
-                    _sessionLogger.LogError(Resources.Error_UserNameParse, User.Name, error);
-                    throw new ArgumentException(string.Format(Resources.Error_UserNameParse, User.Name, error));
-                }
+            // In remote broker User Identity type is always WindowsIdentity
+            string suppressUI = useridentity == null ? string.Empty : "--rhost-suppress-ui ";
+            string isRepl = _isInteractive ? "--rhost-interactive " : string.Empty;
+            string logFolderParam = string.IsNullOrEmpty(logFolder) ? string.Empty : Invariant($"--rhost-log-dir \"{logFolder}\"");
+            string arguments = Invariant($"{suppressUI}{isRepl}--rhost-r-dir \"{Interpreter.BinPath}\" --rhost-name \"{Id}\" {logFolderParam} --rhost-log-verbosity {(int)verbosity} {CommandLineArguments}");
 
-                psi.Domain = domain.ToString();
-                psi.UserName = username.ToString();
-                psi.Password = password;
-
-                _sessionLogger.LogTrace(Resources.Trace_EnvironmentVariableCreationBegin, User.Name, profilePath);
-                // if broker and rhost are run as different users recreate user environment variables.
-                psi.EnvironmentVariables["USERNAME"] = username.ToString();
-                _sessionLogger.LogTrace(Resources.Trace_EnvironmentVariable, "USERNAME", psi.EnvironmentVariables["USERNAME"]);
-
-                psi.EnvironmentVariables["HOMEDRIVE"] = profilePath.Substring(0, 2);
-                _sessionLogger.LogTrace(Resources.Trace_EnvironmentVariable, "HOMEDRIVE", psi.EnvironmentVariables["HOMEDRIVE"]);
-
-                psi.EnvironmentVariables["HOMEPATH"] = profilePath.Substring(2);
-                _sessionLogger.LogTrace(Resources.Trace_EnvironmentVariable, "HOMEPATH", psi.EnvironmentVariables["HOMEPATH"]);
-
-                psi.EnvironmentVariables["USERPROFILE"] = $"{psi.EnvironmentVariables["HOMEDRIVE"]}{psi.EnvironmentVariables["HOMEPATH"]}";
-                _sessionLogger.LogTrace(Resources.Trace_EnvironmentVariable, "USERPROFILE", psi.EnvironmentVariables["USERPROFILE"]);
-
-                psi.EnvironmentVariables["APPDATA"] = $"{psi.EnvironmentVariables["USERPROFILE"]}\\AppData\\Roaming";
-                _sessionLogger.LogTrace(Resources.Trace_EnvironmentVariable, "APPDATA", psi.EnvironmentVariables["APPDATA"]);
-
-                psi.EnvironmentVariables["LOCALAPPDATA"] = $"{psi.EnvironmentVariables["USERPROFILE"]}\\AppData\\Local";
-                _sessionLogger.LogTrace(Resources.Trace_EnvironmentVariable, "LOCALAPPDATA", psi.EnvironmentVariables["LOCALAPPDATA"]);
-
-                psi.EnvironmentVariables["TEMP"] = $"{psi.EnvironmentVariables["LOCALAPPDATA"]}\\Temp";
-                _sessionLogger.LogTrace(Resources.Trace_EnvironmentVariable, "TEMP", psi.EnvironmentVariables["TEMP"]);
-
-                psi.EnvironmentVariables["TMP"] = $"{psi.EnvironmentVariables["LOCALAPPDATA"]}\\Temp";
-                _sessionLogger.LogTrace(Resources.Trace_EnvironmentVariable, "TMP", psi.EnvironmentVariables["TMP"]);
-            }
-
-            var shortHome = new StringBuilder(NativeMethods.MAX_PATH);
-            NativeMethods.GetShortPathName(Interpreter.Info.Path, shortHome, shortHome.Capacity);
-            psi.EnvironmentVariables["R_HOME"] = shortHome.ToString();
-            psi.EnvironmentVariables["PATH"] = Interpreter.Info.BinPath + ";" + Environment.GetEnvironmentVariable("PATH");
-
-            psi.WorkingDirectory = Path.GetDirectoryName(rhostExePath);
-            
-            _process = new Process {
-                StartInfo = psi,
-                EnableRaisingEvents = true,
-            };
-
-            _process.ErrorDataReceived += (sender, e) => {
-                var process = (Process)sender;
-                outputLogger?.LogTrace(Resources.Trace_ErrorDataReceived, process.Id, e.Data);
-            };
+            _sessionLogger.LogInformation(Resources.Info_StartingRHost, Id, User.Name, arguments);
+            _process = _processService.StartHost(Interpreter, profilePath, User.Name, _principal, arguments);
 
             _process.Exited += delegate {
                 _hostEnd?.Dispose();
                 _hostEnd = null;
                 State = SessionState.Terminated;
+                if (_process.ExitCode != 0) {
+                    _sessionLogger.LogInformation(Resources.Error_ExitRHost, _process.ExitCode);
+                }
             };
 
-            _sessionLogger.LogInformation(Resources.Info_StartingRHost, Id, User.Name, rhostExePath, arguments);
-            try {
-                StartSession();
-            } catch(Exception ex) {
-                _sessionLogger.LogError(Resources.Error_RHostFailedToStart, ex.Message);
-                throw;
-            }
             _sessionLogger.LogInformation(Resources.Info_StartedRHost, Id, User.Name);
-
-            _process.BeginErrorReadLine();
 
             var hostEnd = _pipe.ConnectHost(_process.Id);
             _hostEnd = hostEnd;
@@ -176,29 +125,21 @@ namespace Microsoft.R.Host.Broker.Sessions {
             HostToClientWorker(_process.StandardOutput.BaseStream, hostEnd).DoNotWait();
         }
 
-        private void StartSession() {
-            _process.Start();
-            _process.WaitForExit(250);
-            if (_process.HasExited && _process.ExitCode < 0) {
-                var message = ErrorCodeConverter.MessageFromErrorCode(_process.ExitCode);
-                if (!string.IsNullOrEmpty(message)) { 
-                    throw new Win32Exception(message);
-                }
-                throw new Win32Exception(_process.ExitCode);
-            }
-        }
-
         public void KillHost() {
             _sessionLogger.LogTrace("Killing host process for session '{0}'.", Id);
 
             try {
-                _process?.Kill();
-            } catch (Exception ex) {
+                if (!(_process?.HasExited).Value) {
+                    _process?.Kill();
+                }
+            } catch(Win32Exception wex) when ((uint)wex.HResult == 0x80004005) {
+                // On windows, attempting to kill a process that already has a kill issued will result 
+                // in AccessDeniedException. This is best effort, so log it and continue.
+                _sessionLogger.LogError(0, wex, "Failed to kill host process for session '{0}'.", Id);
+            } catch (Exception ex) when (!ex.IsCriticalException()) {
                 _sessionLogger.LogError(0, ex, "Failed to kill host process for session '{0}'.", Id);
                 throw;
             }
-
-            _process = null;
         }
 
         public IMessagePipeEnd ConnectClient() {
@@ -206,7 +147,7 @@ namespace Microsoft.R.Host.Broker.Sessions {
 
             if (_pipe == null) {
                 _sessionLogger.LogError("Session '{0}' already has a client pipe connected.", Id);
-                throw new InvalidOperationException(string.Format(Resources.Error_RHostFailedToStart, Id));
+                throw new InvalidOperationException(Resources.Error_RHostFailedToStart.FormatInvariant(Id));
             }
 
             return _pipe.ConnectClient();
@@ -215,20 +156,21 @@ namespace Microsoft.R.Host.Broker.Sessions {
         private async Task ClientToHostWorker(Stream stream, IMessagePipeEnd pipe) {
             using (stream) {
                 while (true) {
-                    byte[] message;
                     try {
-                        message = await pipe.ReadAsync(Program.CancellationToken);
-                    } catch (PipeDisconnectedException) {
-                        break;
-                    }
+                        byte[] message;
+                        message = await pipe.ReadAsync(_applicationLifetime.ApplicationStopping);
 
-                    var sizeBuf = BitConverter.GetBytes(message.Length);
-                    try {
+                        var sizeBuf = BitConverter.GetBytes(message.Length);
+
                         await stream.WriteAsync(sizeBuf, 0, sizeBuf.Length);
                         await stream.WriteAsync(message, 0, message.Length);
                         await stream.FlushAsync();
-                    } catch (IOException) {
-                        break;
+                    } catch (PipeDisconnectedException pdx) {
+                        _sessionLogger.LogError(Resources.Error_ClientToHostConnectionFailed.FormatInvariant(pdx.Message));
+                        KillHost();
+                    } catch (IOException iox) {
+                        _sessionLogger.LogError(Resources.Error_ClientToHostConnectionFailed.FormatInvariant(iox.Message));
+                        KillHost();
                     }
                 }
             }
@@ -237,17 +179,25 @@ namespace Microsoft.R.Host.Broker.Sessions {
         private async Task HostToClientWorker(Stream stream, IMessagePipeEnd pipe) {
             var sizeBuf = new byte[sizeof(int)];
             while (true) {
-                if (!await FillFromStreamAsync(stream, sizeBuf)) {
-                    break;
-                }
-                int size = BitConverter.ToInt32(sizeBuf, 0);
+                try {
+                    if (!await FillFromStreamAsync(stream, sizeBuf)) {
+                        break;
+                    }
+                    int size = BitConverter.ToInt32(sizeBuf, 0);
 
-                var message = new byte[size];
-                if (!await FillFromStreamAsync(stream, message)) {
-                    break;
-                }
+                    var message = new byte[size];
+                    if (!await FillFromStreamAsync(stream, message)) {
+                        break;
+                    }
 
-                pipe.Write(message);
+                    pipe.Write(message);
+                } catch (PipeDisconnectedException pdx) {
+                    _sessionLogger.LogError(Resources.Error_HostToClientConnectionFailed.FormatInvariant(pdx.Message));
+                    KillHost();
+                } catch (IOException iox) {
+                    _sessionLogger.LogError(Resources.Error_HostToClientConnectionFailed.FormatInvariant(iox.Message));
+                    KillHost();
+                }
             }
         }
 

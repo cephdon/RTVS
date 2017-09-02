@@ -13,6 +13,8 @@ using System.Threading.Tasks.Dataflow;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Common.Core;
+using Microsoft.Common.Core.UI;
+using Microsoft.Common.Core.Threading;
 
 namespace Microsoft.UnitTests.Core.Threading {
     [ExcludeFromCodeCoverage]
@@ -38,9 +40,7 @@ namespace Microsoft.UnitTests.Core.Threading {
 
             initialized.Wait();
             uiThreadHelper.Invoke(() => {
-                SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(uiThreadHelper._frame.Dispatcher));
-
-                uiThreadHelper._thread = thread;
+                uiThreadHelper.Thread = thread;
                 uiThreadHelper._syncContext = SynchronizationContext.Current;
                 uiThreadHelper._taskScheduler = new ControlledTaskScheduler(uiThreadHelper._syncContext);
             });
@@ -49,21 +49,37 @@ namespace Microsoft.UnitTests.Core.Threading {
 
         public static UIThreadHelper Instance => LazyInstance.Value;
 
-        private Thread _thread;
+        private readonly AsyncLocal<TestMainThread> _testMainThread;
         private DispatcherFrame _frame;
         private Application _application;
         private SynchronizationContext _syncContext;
         private ControlledTaskScheduler _taskScheduler;
 
         private UIThreadHelper() {
+            _testMainThread = new AsyncLocal<TestMainThread>();
         }
 
-        public Thread Thread => _thread;
+        public Thread Thread { get; private set; }
+
         public SynchronizationContext SyncContext => _syncContext;
         public ControlledTaskScheduler TaskScheduler => _taskScheduler;
+        public IMainThread MainThread => _testMainThread.Value;
+        public IProgressDialog ProgressDialog => _testMainThread.Value;
+
+        internal TestMainThread CreateTestMainThread() {
+            if (_testMainThread.Value != null) {
+                throw new InvalidOperationException("AsyncLocal<TestMainThread> reentrancy");
+            }
+
+            var testMainThread = new TestMainThread(RemoveTestMainThread);
+            _testMainThread.Value = testMainThread;
+            return testMainThread;
+        }
+
+        private void RemoveTestMainThread() => _testMainThread.Value = null;
 
         public void Invoke(Action action) {
-            ExceptionDispatchInfo exception = _thread == Thread.CurrentThread
+            ExceptionDispatchInfo exception = Thread == Thread.CurrentThread
                ? CallSafe(action)
                : _application.Dispatcher.Invoke(() => CallSafe(action));
 
@@ -72,12 +88,11 @@ namespace Microsoft.UnitTests.Core.Threading {
 
         public async Task InvokeAsync(Action action) {
             ExceptionDispatchInfo exception;
-            if (_thread == Thread.CurrentThread) {
+            if (Thread == Thread.CurrentThread) {
                 exception = CallSafe(action);
             } else {
-                exception = await _application.Dispatcher.InvokeAsync(() => CallSafe(action));
+                exception = await _application.Dispatcher.InvokeAsync(() => CallSafe(action), DispatcherPriority.Normal);
             }
-
             exception?.Throw();
         }
 
@@ -89,29 +104,27 @@ namespace Microsoft.UnitTests.Core.Threading {
         }
 
         public T Invoke<T>(Func<T> action) {
-            var result = _thread == Thread.CurrentThread
+            var result = Thread == Thread.CurrentThread
                ? CallSafe(action)
                : _application.Dispatcher.Invoke(() => CallSafe(action));
 
             result.Exception?.Throw();
-
             return result.Value;
         }
 
         public async Task<T> InvokeAsync<T>(Func<T> action) {
             CallSafeResult<T> result;
-            if (_thread == Thread.CurrentThread) {
+            if (Thread == Thread.CurrentThread) {
                 result = CallSafe(action);
             } else {
                 result = await _application.Dispatcher.InvokeAsync(() => CallSafe(action));
             }
 
             result.Exception?.Throw();
-
             return result.Value;
         }
 
-        public async Task<Exception> WaitForNextExceptionAsync(CancellationToken cancellationToken = default (CancellationToken)) {
+        public async Task<Exception> WaitForNextExceptionAsync(CancellationToken cancellationToken = default(CancellationToken)) {
             var args = await EventTaskSources.Dispatcher.UnhandledException.Create(_application.Dispatcher, e => e.Handled = true, cancellationToken);
             return args.Exception;
         }
@@ -122,7 +135,7 @@ namespace Microsoft.UnitTests.Core.Threading {
                 return;
             }
 
-            DispatcherFrame frame = new DispatcherFrame();
+            var frame = new DispatcherFrame();
             _application.Dispatcher.BeginInvoke(DispatcherPriority.Background, new DispatcherOperationCallback(ExitFrame), frame);
             Dispatcher.PushFrame(frame);
         }
@@ -139,23 +152,22 @@ namespace Microsoft.UnitTests.Core.Threading {
                     .ContinueWith(t => DoEventsAsync())
                     .Wait();
             } else {
-                DispatcherFrame frame = new DispatcherFrame();
+                var frame = new DispatcherFrame();
                 Task.Delay(ms)
                     .ContinueWith(t => _application.Dispatcher.BeginInvoke(DispatcherPriority.Background, new DispatcherOperationCallback(ExitFrame), frame));
                 Dispatcher.PushFrame(frame);
             }
         }
 
-        private object ExitFrame(object f) {
+        private static object ExitFrame(object f) {
             ((DispatcherFrame)f).Continue = false;
             return null;
         }
 
-        public Task DoEventsAsync() {
-            return TaskUtilities.IsOnBackgroundThread()
-                ? _application.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Background).Task
-                : Task.Run(DoEventsAsync);
-        }
+        public Task DoEventsAsync()
+            => TaskUtilities.IsOnBackgroundThread()
+            ? _application.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Background).Task
+            : Task.Run(DoEventsAsync);
 
         private void RunMainThread(object obj) {
             if (Application.Current != null) {
@@ -177,13 +189,13 @@ namespace Microsoft.UnitTests.Core.Threading {
 
             // Dispatcher.Run internally calls PushFrame(new DispatcherFrame()), so we need to call PushFrame ourselves
             _frame = new DispatcherFrame(exitWhenRequested: false);
-            List<ExceptionDispatchInfo> exceptionInfos = new List<ExceptionDispatchInfo>();
+            var exceptionInfos = new List<ExceptionDispatchInfo>();
 
             // Initialization completed
             ((ManualResetEventSlim)obj).Set();
 
             while (_frame.Continue) {
-                ExceptionDispatchInfo exception = CallSafe(() => Dispatcher.PushFrame(_frame));
+                var exception = CallSafe(() => Dispatcher.PushFrame(_frame));
                 if (exception != null) {
                     exceptionInfos.Add(exception);
                 }
@@ -203,8 +215,8 @@ namespace Microsoft.UnitTests.Core.Threading {
             AppDomain.CurrentDomain.DomainUnload -= Destroy;
             AppDomain.CurrentDomain.ProcessExit -= Destroy;
 
-            Thread mainThread = _thread;
-            _thread = null;
+            var mainThread = Thread;
+            Thread = null;
             _frame.Continue = false;
 
             // If the thread is still alive, allow it to exit normally so the dispatcher can continue to clear pending work items
@@ -212,12 +224,11 @@ namespace Microsoft.UnitTests.Core.Threading {
             mainThread.Join(10000);
         }
 
-        private static ExceptionDispatchInfo CallSafe(Action action) {
-            return CallSafe<object>(() => {
+        private static ExceptionDispatchInfo CallSafe(Action action)
+            => CallSafe<object>(() => {
                 action();
                 return null;
             }).Exception;
-        }
 
         private static CallSafeResult<T> CallSafe<T>(Func<T> func) {
             try {

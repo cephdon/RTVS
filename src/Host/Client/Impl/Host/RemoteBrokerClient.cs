@@ -6,61 +6,121 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Common.Core;
+using Microsoft.Common.Core.IO;
 using Microsoft.Common.Core.Logging;
-using Microsoft.Common.Core.Net;
 using Microsoft.Common.Core.Services;
-using Microsoft.R.Host.Client.BrokerServices;
+using Microsoft.R.Host.Protocol;
 
 namespace Microsoft.R.Host.Client.Host {
-    internal sealed class RemoteBrokerClient : BrokerClient {
+    public sealed class RemoteBrokerClient : BrokerClient {
         private readonly IConsole _console;
-        private readonly ICoreServices _services;
+        private readonly IServiceContainer _services;
+        private readonly object _verificationLock = new object();
+        private readonly CancellationToken _cancellationToken;
+        private readonly IRSessionProvider _sessionProvider;
+
+        private string _certificateHash;
+        private bool? _certificateValidationResult;
 
         static RemoteBrokerClient() {
+#if !NETSTANDARD1_6
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-            ServicePointManager.ServerCertificateValidationCallback += new RemoteCertificateValidationCallback(ValidateCertificateServicePoint);
+            ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+#endif
         }
 
-        public RemoteBrokerClient(string name, Uri brokerUri, ICoreServices services, IConsole console)
-            : base(name, brokerUri, brokerUri.Fragment, new RemoteCredentialsDecorator(brokerUri, services.Security), services.Log) {
+        public RemoteBrokerClient(string name, IRSessionProvider sessionProvider, BrokerConnectionInfo connectionInfo, IServiceContainer services, IConsole console, CancellationToken cancellationToken)
+            : base(name, connectionInfo, new RemoteCredentialsDecorator(connectionInfo.CredentialAuthority, connectionInfo.Name, services), console, services) {
             _console = console;
             _services = services;
+            _cancellationToken = cancellationToken;
+            _sessionProvider = sessionProvider;
 
-            CreateHttpClient(brokerUri);
+            CreateHttpClient(connectionInfo.Uri);
             HttpClientHandler.ServerCertificateValidationCallback = ValidateCertificateHttpHandler;
         }
 
-        public override string HandleUrl(string url, CancellationToken ct) {
-            return WebServer.CreateWebServer(url, HttpClient.BaseAddress.ToString(), ct);
+        public override async Task<RHost> ConnectAsync(HostConnectionInfo connectionInfo, CancellationToken cancellationToken = new CancellationToken()) {
+            var host = await base.ConnectAsync(connectionInfo, cancellationToken);
+
+            var aboutHost = await GetHostInformationAsync<AboutHost>(cancellationToken);
+            var brokerIncompatibleMessage = aboutHost?.IsHostVersionCompatible();
+            if (brokerIncompatibleMessage != null) {
+                throw new RHostDisconnectedException(brokerIncompatibleMessage);
+            }
+
+            return host;
+        }
+
+        public override async Task<string> HandleUrlAsync(string url, CancellationToken cancellationToken) {
+            if (!url.StartsWithIgnoreCase("http://") && !url.StartsWithIgnoreCase("file://") && !url.StartsWithIgnoreCase("/")) {
+                _console.WriteError(string.Format(Resources.Error_RemoteUriNotSupported, url));
+                return null;
+            }
+
+            var remotingService = _services.GetService<IRemotingWebServer>();
+            if (url.StartsWithIgnoreCase("file://") || url.StartsWithIgnoreCase("/")) {
+                var fs = _services.GetService<IFileSystem>();
+                return await remotingService.HandleRemoteStaticFileUrlAsync(url, _sessionProvider, _console, cancellationToken);
+            }
+
+            return await remotingService.HandleRemoteWebUrlAsync(url, HttpClient.BaseAddress.ToString(), Name, _console, cancellationToken);
         }
 
         protected override async Task<Exception> HandleHttpRequestExceptionAsync(HttpRequestException exception) {
-            // Broker is not responsing. Try regular ping.
-            string status = await Uri.GetMachineOnlineStatusAsync();
+            // Broker is not responding. Try regular ping.
+            var status = await ConnectionInfo.Uri.GetMachineOnlineStatusAsync();
             return string.IsNullOrEmpty(status)
-                ? new RHostDisconnectedException(Resources.Error_BrokerNotRunning, exception)
-                : await base.HandleHttpRequestExceptionAsync(exception);
+                ? new RHostDisconnectedException(Resources.Error_BrokerNotRunning.FormatInvariant(Name), exception)
+                : new RHostDisconnectedException(Resources.Error_HostNotRespondingToPing.FormatInvariant(Name, exception.Message), exception);
         }
 
-        private static bool ValidateCertificateServicePoint(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors) => true;
-
         private bool ValidateCertificateHttpHandler(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors) {
-            IsVerified = sslPolicyErrors == SslPolicyErrors.None;
-            if (!IsVerified) {
-                if (sslPolicyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNotAvailable)) {
-                    Log.WriteAsync(LogVerbosity.Minimal, MessageCategory.Error, Resources.Error_NoBrokerCertificate);
-                    _console.Write(Resources.Error_NoBrokerCertificate);
-                } else {
-                    Log.WriteAsync(LogVerbosity.Minimal, MessageCategory.Warning, Resources.Trace_UntrustedCertificate.FormatInvariant(certificate.Subject)).DoNotWait();
-
-                    var message = Resources.CertificateSecurityWarning.FormatInvariant(Uri.Host);
-                    return _services.Security.ValidateX509CertificateAsync(certificate, message).GetAwaiter().GetResult();
-                }
+            if (_cancellationToken.IsCancellationRequested) {
+                return false;
             }
-            return IsVerified;
+
+            IsVerified = sslPolicyErrors == SslPolicyErrors.None;
+            if (IsVerified) {
+                return true;
+            }
+
+            if (sslPolicyErrors.HasFlag(SslPolicyErrors.RemoteCertificateNotAvailable)) {
+                Log.WriteLine(LogVerbosity.Minimal, MessageCategory.Error, Resources.Error_NoBrokerCertificate);
+                _console.WriteError(Resources.Error_NoBrokerCertificate.FormatInvariant(Name));
+                return false;
+            }
+
+            lock (_verificationLock) {
+                if (_certificateValidationResult.HasValue) {
+                    return _certificateValidationResult.Value;
+                }
+
+                Log.Write(LogVerbosity.Minimal, MessageCategory.General, Resources.Trace_SSLPolicyErrors.FormatInvariant(sslPolicyErrors));
+                var hashString = GetCertHashString(certificate.GetCertHash());
+                if (_certificateHash == null || !_certificateHash.EqualsOrdinal(hashString)) {
+                    Log.Write(LogVerbosity.Minimal, MessageCategory.Warning, Resources.Trace_UntrustedCertificate.FormatInvariant(certificate.Subject));
+
+                    var message = Resources.CertificateSecurityWarning.FormatInvariant(ConnectionInfo.Uri.Host);
+                    _certificateValidationResult = _services.Security().ValidateX509Certificate(certificate, message);
+                    if (_certificateValidationResult.Value) {
+                        _certificateHash = hashString;
+                    }
+                }
+                return _certificateValidationResult ?? false;
+            }
+        }
+
+        private string GetCertHashString(byte[] hash) {
+            var sb = new StringBuilder(); 
+            foreach (var t in hash) {
+                sb.Append(t.ToString("x2"));
+            }
+            return sb.ToString();
         }
     }
 }

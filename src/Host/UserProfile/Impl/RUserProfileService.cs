@@ -2,92 +2,74 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
-using System.IO.Pipes;
-using System.Security.Principal;
 using System.ServiceProcess;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Common.Core;
+using Microsoft.Common.Core.IO;
+using Microsoft.Common.Core.OS;
 using Microsoft.Extensions.Logging;
-using Microsoft.R.Host.Protocol;
-using Newtonsoft.Json;
-using System.Runtime.InteropServices;
+using Microsoft.Extensions.Logging.EventLog;
 
 namespace Microsoft.R.Host.UserProfile {
     partial class RUserProfileService : ServiceBase {
 
         private static int ServiceShutdownTimeoutMs => 5000;
-        private static int ClientResponseReadTimeoutMs => 3000;
+
+        private static int ServiceReadAfterConnectTimeoutMs => 5000;
+        private static int ClientResponseReadTimeoutMs => 5000;
 
         public RUserProfileService() {
             InitializeComponent();
         }
 
-        private ManualResetEvent _workerdone;
+        private ManualResetEvent _createWorkerDone;
+        private ManualResetEvent _deleteWorkerDone;
         private CancellationTokenSource _cts;
         private ILogger _logger;
         private ILoggerFactory _loggerFactory;
+
         protected override void OnStart(string[] args) {
             _loggerFactory = new LoggerFactory();
             _loggerFactory
                 .AddDebug()
-                .AddProvider(new ServiceLoggerProvider());
+                .AddEventLog(new EventLogSettings {
+                    Filter = (_, logLevel) => logLevel >= LogLevel.Trace,
+                    SourceName = Resources.Text_ServiceName
+                });
             _logger = _loggerFactory.CreateLogger<RUserProfileService>();
 
             _cts = new CancellationTokenSource();
-            _workerdone = new ManualResetEvent(false);
+            _createWorkerDone = new ManualResetEvent(false);
+            _deleteWorkerDone = new ManualResetEvent(false);
+
             CreateProfileWorkerAsync(_cts.Token).DoNotWait();
+            DeleteProfileWorkerAsync(_cts.Token).DoNotWait();
         }
 
         protected override void OnStop() {
             _cts.Cancel();
-            _workerdone.WaitOne(TimeSpan.FromMilliseconds(ServiceShutdownTimeoutMs));
+            WaitHandle.WaitAll(new WaitHandle[] { _createWorkerDone, _deleteWorkerDone }, TimeSpan.FromMilliseconds(ServiceShutdownTimeoutMs));
         }
 
-        async Task CreateProfileWorkerAsync(CancellationToken ct) {
+        private async Task CreateProfileWorkerAsync(CancellationToken ct) {
+            await ProfileWorkerAsync(RUserProfileServicesHelper.CreateProfileAsync, ServiceReadAfterConnectTimeoutMs, ClientResponseReadTimeoutMs, _createWorkerDone, ct, _logger);
+        }
+
+        private async Task DeleteProfileWorkerAsync(CancellationToken ct) {
+            await ProfileWorkerAsync(RUserProfileServicesHelper.DeleteProfileAsync, ServiceReadAfterConnectTimeoutMs, ClientResponseReadTimeoutMs, _deleteWorkerDone, ct, _logger);
+        }
+
+        private static async Task ProfileWorkerAsync( Func<int,int, IUserProfileServices, IUserProfileNamedPipeFactory, CancellationToken, ILogger, Task> action, int serverTimeOutms, int clientTimeOutms,  ManualResetEvent workerDone, CancellationToken ct, ILogger logger) {
             while (!ct.IsCancellationRequested) {
-                PipeSecurity ps = new PipeSecurity();
-                SecurityIdentifier sid = new SecurityIdentifier(WellKnownSidType.WorldSid, null);
-                PipeAccessRule par = new PipeAccessRule(sid, PipeAccessRights.ReadWrite, System.Security.AccessControl.AccessControlType.Allow);
-                ps.AddAccessRule(par);
-                using (NamedPipeServerStream server = new NamedPipeServerStream("Microsoft.R.Host.UserProfile.Creator{b101cc2d-156e-472e-8d98-b9d999a93c7a}", PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous, 1024, 1024, ps)) {
-                    try {
-                        await server.WaitForConnectionAsync(ct);
-
-                        byte[] requestRaw = new byte[1024];
-                        int bytesRead = 0;
-
-                        while(bytesRead == 0 && !ct.IsCancellationRequested) {
-                            bytesRead = await server.ReadAsync(requestRaw, 0, requestRaw.Length, ct);
-                        }
-                        
-                        string json = Encoding.Unicode.GetString(requestRaw, 0, bytesRead);
-
-                        var requestData = JsonConvert.DeserializeObject<RUserProfileCreateRequest>(json);
-
-                        var result = RUserProfileCreator.Create(requestData, _logger);
-
-                        string jsonResp = JsonConvert.SerializeObject(result);
-                        byte[] respData = Encoding.Unicode.GetBytes(jsonResp);
-
-                        await server.WriteAsync(respData, 0, respData.Length, ct);
-                        await server.FlushAsync(ct);
-
-                        // Waiting here to allow client to finish reading 
-                        // client should disconnect after reading.
-                        while (bytesRead == 0 && !ct.IsCancellationRequested) {
-                            bytesRead = await server.ReadAsync(requestRaw, 0, requestRaw.Length, ct);
-                        }
-
-                        // if there was an attempt to write, disconnect.
-                        server.Disconnect();
-                    } catch (Exception ex) when (!ex.IsCriticalException()) {
-                        _logger?.LogError(Resources.Error_UserProfileCreationError, ex.Message);
-                    } 
+                try {
+                    await action?.Invoke(ServiceReadAfterConnectTimeoutMs, ClientResponseReadTimeoutMs, null, null, ct, logger);
+                } catch (TaskCanceledException) {
+                } catch (Exception ex) when (!ex.IsCriticalException()) {
+                    logger?.LogError(Resources.Error_UserProfileServiceError, ex.Message);
                 }
             }
-            _workerdone.Set();
+            workerDone.Set();
         }
     }
 }

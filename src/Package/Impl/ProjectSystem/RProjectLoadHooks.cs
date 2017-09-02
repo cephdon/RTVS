@@ -6,34 +6,29 @@ using System.Collections.Generic;
 using System.ComponentModel.Composition;
 using System.Globalization;
 using System.IO;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Common.Core;
 using Microsoft.Common.Core.Enums;
-using Microsoft.Common.Core.IO;
+using Microsoft.Common.Core.Logging;
+using Microsoft.Common.Core.Services;
 using Microsoft.Common.Core.Shell;
-using Microsoft.R.Components.Extensions;
+using Microsoft.Common.Core.UI;
 using Microsoft.R.Components.History;
 using Microsoft.R.Components.InteractiveWorkflow;
+using Microsoft.R.Components.Settings;
 using Microsoft.R.Host.Client;
 using Microsoft.R.Host.Client.Session;
-using Microsoft.R.Support.Settings.Definitions;
 using Microsoft.VisualStudio.ProjectSystem;
 using Microsoft.VisualStudio.ProjectSystem.FileSystemMirroring.IO;
 using Microsoft.VisualStudio.ProjectSystem.FileSystemMirroring.Project;
-using Microsoft.VisualStudio.R.Package.Interop;
+using Microsoft.VisualStudio.ProjectSystem.VS;
 using Microsoft.VisualStudio.R.Package.Shell;
 using Microsoft.VisualStudio.R.Package.SurveyNews;
 using Microsoft.VisualStudio.R.Packages.R;
 using Microsoft.VisualStudio.Shell.Interop;
-using Microsoft.Common.Core.Logging;
-#if VS14
-using Microsoft.VisualStudio.ProjectSystem.Utilities;
-using IThreadHandling = Microsoft.VisualStudio.ProjectSystem.IThreadHandling;
-#endif
-#if VS15
-using Microsoft.VisualStudio.ProjectSystem.VS;
 using IThreadHandling = Microsoft.VisualStudio.ProjectSystem.IProjectThreadingService;
-#endif
 
 
 namespace Microsoft.VisualStudio.R.Package.ProjectSystem {
@@ -46,19 +41,16 @@ namespace Microsoft.VisualStudio.R.Package.ProjectSystem {
 
         private readonly MsBuildFileSystemWatcher _fileWatcher;
         private readonly string _projectDirectory;
-        private readonly IRToolsSettings _toolsSettings;
+        private readonly IRSettings _settings;
         private readonly IThreadHandling _threadHandling;
         private readonly UnconfiguredProject _unconfiguredProject;
         private readonly IEnumerable<Lazy<IVsProject>> _cpsIVsProjects;
-        private readonly IRInteractiveWorkflowProvider _workflowProvider;
-        private readonly IInteractiveWindowComponentContainerFactory _componentContainerFactory;
-        private readonly IProjectItemDependencyProvider _dependencyProvider;
+        private readonly IProjectLockService _projectLockService;
         private readonly ICoreShell _coreShell;
 
-        private IRInteractiveWorkflow _workflow;
+        private IRInteractiveWorkflowVisual _workflow;
         private IRSession _session;
         private IRHistory _history;
-        private ISurveyNewsService _surveyNews;
 
         /// <summary>
         /// Backing field for the similarly named property.
@@ -67,41 +59,31 @@ namespace Microsoft.VisualStudio.R.Package.ProjectSystem {
         public RProjectLoadHooks(UnconfiguredProject unconfiguredProject
             , [ImportMany("Microsoft.VisualStudio.ProjectSystem.Microsoft.VisualStudio.Shell.Interop.IVsProject")] IEnumerable<Lazy<IVsProject>> cpsIVsProjects
             , IProjectLockService projectLockService
-            , IRInteractiveWorkflowProvider workflowProvider
-            , IInteractiveWindowComponentContainerFactory componentContainerFactory
-            , IRToolsSettings toolsSettings
             , IThreadHandling threadHandling
-            , ISurveyNewsService surveyNews
             , [Import(AllowDefault = true)] IProjectItemDependencyProvider dependencyProvider
             , ICoreShell coreShell) {
-
             _unconfiguredProject = unconfiguredProject;
             _cpsIVsProjects = cpsIVsProjects;
-            _workflowProvider = workflowProvider;
-            _componentContainerFactory = componentContainerFactory;
+            _projectLockService = projectLockService;
 
-            _toolsSettings = toolsSettings;
+            _settings = coreShell.GetService<IRSettings>();
             _threadHandling = threadHandling;
-            _surveyNews = surveyNews;
-            _dependencyProvider = dependencyProvider;
             _coreShell = coreShell;
 
             _projectDirectory = unconfiguredProject.GetProjectDirectory();
 
-            unconfiguredProject.ProjectUnloading += ProjectUnloading;
-            _fileWatcher = new MsBuildFileSystemWatcher(_projectDirectory, "*", 25, 1000, _coreShell.Services.FileSystem, new RMsBuildFileSystemFilter(), coreShell.Services.Log);
+            unconfiguredProject.ProjectRenamedOnWriter += ProjectRenamedOnWriter;
+            unconfiguredProject.ProjectUnloading += ProjectUnloadingAsync;
+
+            _fileWatcher = new MsBuildFileSystemWatcher(_projectDirectory, "*", 25, 1000, _coreShell.FileSystem(), new RMsBuildFileSystemFilter(), coreShell.Log());
             _fileWatcher.Error += FileWatcherError;
-            Project = new FileSystemMirroringProject(unconfiguredProject, projectLockService, _fileWatcher, _dependencyProvider, coreShell.Services.Log);
+            Project = new FileSystemMirroringProject(unconfiguredProject, projectLockService, _fileWatcher, dependencyProvider, coreShell.Log());
         }
 
         [AppliesTo(ProjectConstants.RtvsProjectCapability)]
-#if VS14
-        [UnconfiguredProjectAutoLoad2(completeBy: UnconfiguredProjectLoadCheckpoint.CapabilitiesEstablished)]
-#else
         [ProjectAutoLoad(startAfter: ProjectLoadCheckpoint.UnconfiguredProjectLocalCapabilitiesEstablished,
                          completeBy: ProjectLoadCheckpoint.BeforeLoadInitialConfiguration,
                          RequiresUIThread = false)]
-#endif
         public async Task InitializeProjectFromDiskAsync() {
             await Project.CreateInMemoryImport();
             _fileWatcher.Start();
@@ -113,12 +95,12 @@ namespace Microsoft.VisualStudio.R.Package.ProjectSystem {
             // Verify project is not on a network share and give warning if it is
             CheckRemoteDrive(_projectDirectory);
 
-            _workflow = _workflowProvider.GetOrCreate();
+            _workflow = _coreShell.GetService<IRInteractiveWorkflowVisualProvider>().GetOrCreate();
             _session = _workflow.RSession;
             _history = _workflow.History;
 
             if (_workflow.ActiveWindow == null) {
-                var window = await _workflow.GetOrCreateVisualComponent(_componentContainerFactory);
+                var window = await _workflow.GetOrCreateVisualComponentAsync();
                 window.Container.Show(focus: true, immediate: false);
             }
 
@@ -128,24 +110,22 @@ namespace Microsoft.VisualStudio.R.Package.ProjectSystem {
                 return;
             }
 
+            _workflow.RSessions.BeforeDisposed += BeforeRSessionsDisposed;
+
             // TODO: need to compute the proper paths for remote, but they might not even exist if the project hasn't been deployed.
             // https://github.com/Microsoft/RTVS/issues/2223
             if (!_session.IsRemote) {
                 var rdataPath = Path.Combine(_projectDirectory, DefaultRDataName);
-                bool loadDefaultWorkspace = _coreShell.Services.FileSystem.FileExists(rdataPath) && await GetLoadDefaultWorkspace(rdataPath);
-                using (var evaluation = await _session.BeginEvaluationAsync()) {
-                    if (loadDefaultWorkspace) {
-                        await evaluation.LoadWorkspaceAsync(rdataPath);
-                    }
+                bool loadDefaultWorkspace = _coreShell.FileSystem().FileExists(rdataPath) && await GetLoadDefaultWorkspace(rdataPath);
 
-                    await evaluation.SetWorkingDirectoryAsync(_projectDirectory);
+                if (loadDefaultWorkspace) {
+                    await _session.LoadWorkspaceAsync(rdataPath);
                 }
-
-                _toolsSettings.WorkingDirectory = _projectDirectory;
+                await _session.SetWorkingDirectoryAsync(_projectDirectory);
+                _settings.WorkingDirectory = _projectDirectory;
             }
 
             _history.TryLoadFromFile(Path.Combine(_projectDirectory, DefaultRHistoryName));
-
             CheckSurveyNews();
         }
 
@@ -155,15 +135,15 @@ namespace Microsoft.VisualStudio.R.Package.ProjectSystem {
             // We do it this way instead of calling DoNotWait extension in order
             // to handle any non critical exceptions.
             try {
-                await _surveyNews.CheckSurveyNewsAsync(false);
+                await _coreShell.GetService<ISurveyNewsService>().CheckSurveyNewsAsync(false);
             } catch (Exception ex) when (!ex.IsCriticalException()) {
-                _coreShell.Services.Log.WriteAsync(LogVerbosity.Normal, MessageCategory.Error, "SurveyNews exception: " + ex.Message).DoNotWait();
+                _coreShell.Log().Write(LogVerbosity.Normal, MessageCategory.Error, "SurveyNews exception: " + ex.Message);
             }
         }
 
         private void FileWatcherError(object sender, EventArgs args) {
             _fileWatcher.Error -= FileWatcherError;
-            _coreShell.DispatchOnUIThread(() => {
+            _coreShell.MainThread().Post(() => {
                 foreach (var iVsProjectLazy in _cpsIVsProjects) {
                     IVsProject iVsProject;
                     try {
@@ -176,24 +156,46 @@ namespace Microsoft.VisualStudio.R.Package.ProjectSystem {
                         continue;
                     }
 
-                    var solution = VsAppShell.Current.GetGlobalService<IVsSolution>(typeof(SVsSolution));
+                    var solution = _coreShell.GetService<IVsSolution>(typeof(SVsSolution));
                     solution.CloseSolutionElement((uint)__VSSLNCLOSEOPTIONS.SLNCLOSEOPT_UnloadProject, (IVsHierarchy)iVsProject, 0);
                     return;
                 }
             });
         }
+        
+        private async Task ProjectRenamedOnWriter(object sender, ProjectRenamedEventArgs args) {
+            var oldImportName = FileSystemMirroringProjectUtilities.GetInMemoryTargetsFileName(args.OldFullPath);
+            var newImportName = FileSystemMirroringProjectUtilities.GetInMemoryTargetsFileName(args.NewFullPath);
+            using (var access = await _projectLockService.WriteLockAsync()) {
+                await access.CheckoutAsync(_unconfiguredProject.FullPath);
+                var xml = await access.GetProjectXmlAsync(_unconfiguredProject.FullPath);
+                var import = xml.Imports.FirstOrDefault(i => i.Project.EqualsIgnoreCase(oldImportName));
+                if (import != null) {
+                    import.Project = newImportName;
+                    import.Condition = $"Exists('{newImportName}')";
+                    await Project.UpdateFullPathAsync(access);
+                }
+            }
+        }
 
-        private async Task ProjectUnloading(object sender, EventArgs args) {
-            _coreShell.AssertIsOnMainThread();
+        private void BeforeRSessionsDisposed(object sender, EventArgs args) {
+            _coreShell.Services.Tasks().Wait(ProjectUnloadingAsync(sender, args));
+        }
 
-            _unconfiguredProject.ProjectUnloading -= ProjectUnloading;
+        private async Task ProjectUnloadingAsync(object sender, EventArgs args) {
+            await _coreShell.SwitchToMainThreadAsync(new CancellationTokenSource(10000).Token);
+
+            _unconfiguredProject.ProjectRenamedOnWriter -= ProjectRenamedOnWriter;
+            _unconfiguredProject.ProjectUnloading -= ProjectUnloadingAsync;
+            _workflow.RSessions.BeforeDisposed -= BeforeRSessionsDisposed;
+
             _fileWatcher.Dispose();
 
-            if (!_coreShell.Services.FileSystem.DirectoryExists(_projectDirectory)) {
+            if (!_coreShell.FileSystem().DirectoryExists(_projectDirectory)) {
                 return;
             }
 
-            if (_toolsSettings.AlwaysSaveHistory) {
+            if (_settings.AlwaysSaveHistory) {
                 _history.TrySaveToFile(Path.Combine(_projectDirectory, DefaultRHistoryName));
             }
 
@@ -204,17 +206,15 @@ namespace Microsoft.VisualStudio.R.Package.ProjectSystem {
             }
 
             Task.Run(async () => {
-                using (var evaluation = await _session.BeginEvaluationAsync()) {
-                    if (saveDefaultWorkspace) {
-                        await evaluation.SaveWorkspaceAsync(rdataPath);
-                    }
-                    await evaluation.SetDefaultWorkingDirectoryAsync();
+                if (saveDefaultWorkspace) {
+                    await _session.SaveWorkspaceAsync(rdataPath);
                 }
+                await _session.SetDefaultWorkingDirectoryAsync();
             }).SilenceException<RException>().DoNotWait();
         }
 
         private async Task<bool> GetLoadDefaultWorkspace(string rdataPath) {
-            switch (_toolsSettings.LoadRDataOnProjectLoad) {
+            switch (_settings.LoadRDataOnProjectLoad) {
                 case YesNoAsk.Yes:
                     return true;
                 case YesNoAsk.Ask:
@@ -228,7 +228,7 @@ namespace Microsoft.VisualStudio.R.Package.ProjectSystem {
         }
 
         private async Task<bool> GetSaveDefaultWorkspace(string rdataPath) {
-            switch (_toolsSettings.SaveRDataOnProjectUnload) {
+            switch (_settings.SaveRDataOnProjectUnload) {
                 case YesNoAsk.Yes:
                     return true;
                 case YesNoAsk.Ask:

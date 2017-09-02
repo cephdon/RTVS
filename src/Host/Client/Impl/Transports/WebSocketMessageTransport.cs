@@ -15,6 +15,8 @@ namespace Microsoft.R.Host.Client {
         private readonly SemaphoreSlim _receiveLock = new SemaphoreSlim(1, 1);
         private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
 
+        public string CloseStatusDescription => _socket.CloseStatusDescription ?? string.Empty;
+
         public WebSocketMessageTransport(WebSocket socket) {
             _socket = socket;
         }
@@ -23,7 +25,7 @@ namespace Microsoft.R.Host.Client {
             await _sendLock.WaitAsync(cancellationToken);
             try {
                 await _socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "", cancellationToken);
-            } catch (Exception ex) when (ex is IOException || ex is SocketException || ex is WebSocketException) {
+            } catch (Exception ex) when (IsTransportException(ex)) {
                 throw new MessageTransportException(ex);
             } finally {
                 _sendLock.Release();
@@ -43,12 +45,10 @@ namespace Microsoft.R.Host.Client {
                 await _receiveLock.WaitAsync(cancellationToken);
                 WebSocketReceiveResult wsrr;
                 try {
-                    wsrr = await _socket.ReceiveAsync(new ArraySegment<byte>(buffer.GetBuffer(), index, blockSize), cancellationToken);
-                } catch (IOException ex) {
-                    throw new MessageTransportException(ex);
-                } catch (SocketException ex) {
-                    throw new MessageTransportException(ex);
-                } catch (WebSocketException ex) {
+                    ArraySegment<byte> arrSegment;
+                    buffer.TryGetBuffer(out arrSegment);
+                    wsrr = await _socket.ReceiveAsync(new ArraySegment<byte>(arrSegment.Array, index, blockSize), cancellationToken);
+                } catch (Exception ex) when(IsTransportException(ex)) {
                     throw new MessageTransportException(ex);
                 } finally {
                     _receiveLock.Release();
@@ -61,7 +61,7 @@ namespace Microsoft.R.Host.Client {
                 }
 
                 if (wsrr.EndOfMessage) {
-                    return new Message(buffer.ToArray());
+                    return Message.Parse(buffer.ToArray());
                 }
             }
         }
@@ -71,15 +71,15 @@ namespace Microsoft.R.Host.Client {
             await _sendLock.WaitAsync(cancellationToken);
             try {
                 await _socket.SendAsync(new ArraySegment<byte>(data), WebSocketMessageType.Binary, true, cancellationToken);
-            } catch (IOException ex) {
-                throw new MessageTransportException(ex);
-            } catch (SocketException ex) {
-                throw new MessageTransportException(ex);
-            } catch (WebSocketException ex) {
+            } catch (Exception ex) when(IsTransportException(ex)) {
                 throw new MessageTransportException(ex);
             } finally {
                 _sendLock.Release();
             }
+        }
+
+        private static bool IsTransportException(Exception ex) {
+            return ex is IOException || ex is SocketException || ex is WebSocketException || ex is ObjectDisposedException;
         }
     }
 }

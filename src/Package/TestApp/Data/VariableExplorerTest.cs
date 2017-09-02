@@ -3,6 +3,7 @@
 
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
+using Microsoft.Common.Core.Services;
 using Microsoft.Common.Core.Test.Controls;
 using Microsoft.R.Host.Client;
 using Microsoft.UnitTests.Core.XUnit;
@@ -13,47 +14,43 @@ using Xunit;
 
 namespace Microsoft.VisualStudio.R.Interactive.Test.Data {
     [ExcludeFromCodeCoverage]
+    [Category.Interactive]
     [Collection(CollectionNames.NonParallel)]
     public sealed class VariableExplorerTest : HostBasedInteractiveTest {
         private readonly TestFilesFixture _files;
 
-        public VariableExplorerTest(TestFilesFixture files) {
+        public VariableExplorerTest(IServiceContainer services, TestFilesFixture files): base(services) {
             _files = files;
         }
 
         [Test]
-        [Category.Interactive]
         public void ConstructorTest02() {
-            using (var script = new ControlTestScript(typeof(VariableView))) {
+            using (var script = new ControlTestScript(typeof(VariableView), Services)) {
                 var actual = VisualTreeObject.Create(script.Control);
                 ViewTreeDump.CompareVisualTrees(_files, actual, "VariableExplorer02");
             }
         }
 
         [Test]
-        [Category.Interactive]
         public async Task SimpleDataTest() {
-            VisualTreeObject actual = null;
-            using (var script = new ControlTestScript(typeof(VariableView))) {
+            using (var script = new ControlTestScript(typeof(VariableView), Services)) {
                 DoIdle(100);
                 await HostScript.Session.ExecuteAsync("x <- c(1:10)");
                 DoIdle(1000);
-                actual = VisualTreeObject.Create(script.Control);
+                var actual = VisualTreeObject.Create(script.Control);
+                ViewTreeDump.CompareVisualTrees(_files, actual, "VariableExplorer03");
             }
-            ViewTreeDump.CompareVisualTrees(_files, actual, "VariableExplorer03");
         }
 
         [Test]
-        [Category.Interactive]
         public async Task SimpleFunctionTest() {
-            VisualTreeObject actual = null;
-            using (var script = new ControlTestScript(typeof(VariableView))) {
+            using (var script = new ControlTestScript(typeof(VariableView), Services)) {
                 DoIdle(100);
                 await HostScript.Session.ExecuteAsync("x <- lm");
                 DoIdle(1000);
-                actual = VisualTreeObject.Create(script.Control);
+                var actual = VisualTreeObject.Create(script.Control);
+                ViewTreeDump.CompareVisualTrees(_files, actual, "VariableExplorer04");
             }
-            ViewTreeDump.CompareVisualTrees(_files, actual, "VariableExplorer04");
         }
     }
 }

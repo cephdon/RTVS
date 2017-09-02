@@ -8,6 +8,7 @@ namespace Microsoft.VisualStudio.R.Package.Commands {
         public const int helpWindowToolBarId = 0x2010;
         public const int historyWindowToolBarId = 0x2020;
         public const int variableWindowToolBarId = 0x2030;
+        public const int replWindowToolBarId = 0x3000;
 
         // General
         public const int icmdGoToFormattingOptions = 400;
@@ -25,7 +26,6 @@ namespace Microsoft.VisualStudio.R.Package.Commands {
         public const int icmdLoadWorkspace = 502;
         public const int icmdSaveWorkspace = 503;
         public const int icmdSelectWorkingDirectory = 504;
-        public const int icmdResetRepl = 505;
         public const int icmdInterruptR = 506;
         public const int icmdAttachDebugger = 507;
         public const int icmdSourceRScript = 508;
@@ -37,12 +37,17 @@ namespace Microsoft.VisualStudio.R.Package.Commands {
         public const int icmdStepOut = 514;
         public const int icmdStepOver = 515;
         public const int icmdAttachToRInteractive = 516;
-        public const int icmdClearRepl = 517;
         public const int icmdSourceRScriptWithEcho = 518;
         public const int icmdSetDirectoryToSourceCommand = 519;
         public const int icmdSetDirectoryToProjectCommand = 520;
         public const int icmdTerminateR = 521;
         public const int icmdSessionInformation = 522;
+        public const int icmdDeleteProfile = 523;
+
+        public const int icmdResetRepl = 530;
+        public const int icmdClearRepl = 531;
+        public const int icmdNextHistoryRepl = 532;
+        public const int icmdPrevHistoryRepl = 533;
 
         public const int icmdRexecuteReplCmd = 571;
         public const int icmdPasteReplCmd = 572;
@@ -69,6 +74,9 @@ namespace Microsoft.VisualStudio.R.Package.Commands {
         public const int icmdPlotHistoryZoomOut = 724;
         public const int icmdPlotHistoryAutoHide = 725;
         public const int icmdPlotHistoryActivatePlot = 726;
+        public const int icmdPlotWindowsHideAll = 727;
+        // This dynamic command uses ids from 730 to 749
+        public const int icmdPlotWindowsDynamicStart = 730;
 
         // Data
         public const int icmdImportDataset = 801;
@@ -132,7 +140,6 @@ namespace Microsoft.VisualStudio.R.Package.Commands {
         public const int icmdMicrosoftRProducts = 1406;
         public const int icmdCheckForUpdates = 1407;
         public const int icmdInstallRClient = 1408;
-        public const int icmdSwitchToRClient = 1409;
 
         public const int icmdSetDirectoryHere = 1500;
         public const int icmdSourceSelectedFiles = 1501;

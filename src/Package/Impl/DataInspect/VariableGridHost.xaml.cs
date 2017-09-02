@@ -6,40 +6,64 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
+using System.Windows.Input;
 using Microsoft.Common.Core;
-using Microsoft.Common.Core.Shell;
-using Microsoft.R.Components.Extensions;
+using Microsoft.Common.Core.Disposables;
+using Microsoft.Common.Core.Services;
 using Microsoft.R.Components.InteractiveWorkflow;
+using Microsoft.R.Components.Settings;
 using Microsoft.R.DataInspection;
+using Microsoft.R.Editor.Data;
 using Microsoft.R.Host.Client;
-using Microsoft.R.Host.Client.Session;
 using Microsoft.VisualStudio.R.Package.Shell;
 using static Microsoft.R.DataInspection.REvaluationResultProperties;
+using static System.FormattableString;
 
 namespace Microsoft.VisualStudio.R.Package.DataInspect {
     /// <summary>
     /// Control that shows two dimensional R object
     /// </summary>
-    public partial class VariableGridHost : UserControl {
-        private readonly IObjectDetailsViewerAggregator _aggregator;
-        private readonly IRSession _rSession;
-        private VariableViewModel _evaluation;
+    public partial class VariableGridHost : IDisposable {
+        private const string ViewEnvName = "rtvs:::view_env";
 
-        public VariableGridHost() {
+        private readonly IServiceContainer _services;
+        private readonly IRSession _rSession;
+        private readonly DisposableBag _disposableBag = new DisposableBag(nameof(VariableGridHost));
+
+        private IRSessionDataObject _evaluation;
+
+        public VariableGridHost() : this(VsAppShell.Current.Services) { }
+
+        public VariableGridHost(IServiceContainer services) {
             InitializeComponent();
 
-            _aggregator = VsAppShell.Current.ExportProvider.GetExportedValue<IObjectDetailsViewerAggregator>();
-            _rSession = VsAppShell.Current.ExportProvider.GetExportedValue<IRInteractiveWorkflowProvider>().GetOrCreate().RSession;
+            _services = services;
+            _rSession = _services.GetService<IRInteractiveWorkflowProvider>().GetOrCreate().RSession;
             _rSession.Mutated += RSession_Mutated;
+
+            _disposableBag
+                .Add(() => _rSession.Mutated -= RSession_Mutated)
+                .Add(DeleteCachedVariable);
+
+            FocusManager.SetFocusedElement(this, VariableGrid);
         }
 
-        public void CleanUp() {
-            _rSession.Mutated -= RSession_Mutated;
+        public void Dispose() => _disposableBag.TryDispose();
+        
+        private void DeleteCachedVariable() {
+            if (_evaluation != null && _evaluation.Expression.StartsWithOrdinal(ViewEnvName)) {
+                if (_rSession.IsHostRunning) {
+                    var varName = _evaluation.Expression.Substring(ViewEnvName.Length + 1);
+                    try {
+                        _rSession.ExecuteAsync(Invariant($"rm('{varName}', envir = {ViewEnvName})")).DoNotWait();
+                    } catch (Exception ex) when (!ex.IsCriticalException()) { }
+                }
+            }
+            _evaluation = null;
         }
 
-        private void RSession_Mutated(object sender, System.EventArgs e) {
-            if (_evaluation != null) {
+        private void RSession_Mutated(object sender, EventArgs e) {
+            if (_evaluation != null && _services.GetService<IRSettings>().GridDynamicEvaluation) {
                 EvaluateAsync().DoNotWait();
             }
         }
@@ -47,23 +71,23 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect {
         private async Task EvaluateAsync() {
             try {
                 await TaskUtilities.SwitchToBackgroundThread();
-                const REvaluationResultProperties properties = ClassesProperty| ExpressionProperty | TypeNameProperty | DimProperty | LengthProperty;
+                const REvaluationResultProperties properties = ClassesProperty | ExpressionProperty | TypeNameProperty | DimProperty | LengthProperty;
 
                 var result = await _rSession.TryEvaluateAndDescribeAsync(_evaluation.Expression, properties, null);
-                var wrapper = new VariableViewModel(result, _aggregator);
+                var wrapper = new VariableViewModel(result, _services);
 
-                VsAppShell.Current.DispatchOnUIThread(() => SetEvaluation(wrapper));
+                _services.MainThread().Post(() => SetEvaluation(wrapper));
             } catch (Exception ex) {
-                VsAppShell.Current.DispatchOnUIThread(() => SetError(ex.Message));
+                _services.MainThread().Post(() => SetError(ex.Message));
             }
         }
 
-        internal void SetEvaluation(VariableViewModel wrapper) {
-            VsAppShell.Current.AssertIsOnMainThread();
+        internal void SetEvaluation(IRSessionDataObject dataObject) {
+            _services.MainThread().Assert();
 
             // Is the variable gone?
-            if (wrapper.TypeName == null) {
-                SetError(string.Format(CultureInfo.InvariantCulture, Package.Resources.VariableGrid_Missing, wrapper.Expression));
+            if (dataObject.TypeName == null) {
+                SetError(string.Format(CultureInfo.InvariantCulture, Package.Resources.VariableGrid_Missing, dataObject.Expression));
                 _evaluation = null;
                 return;
             }
@@ -71,18 +95,19 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect {
             ClearError();
 
             // Does it have the same size and shape? If so, can update in-place (without losing scrolling etc).
-            if (_evaluation?.Dimensions.SequenceEqual(wrapper.Dimensions) == true) {
+            if (_evaluation?.Dimensions.SequenceEqual(dataObject.Dimensions) == true) {
                 VariableGrid.Refresh();
                 return;
             }
 
             // Otherwise, need to refresh the whole thing from scratch.
-            VariableGrid.Initialize(new GridDataProvider(wrapper));
-            _evaluation = wrapper;
+            var session = _services.GetService<IRInteractiveWorkflowProvider>().GetOrCreate().RSession;
+            VariableGrid.Initialize(new GridDataProvider(session, dataObject));
+            _evaluation = dataObject;
         }
 
         private void SetError(string text) {
-            VsAppShell.Current.AssertIsOnMainThread();
+            _services.MainThread().Assert();
 
             ErrorTextBlock.Text = text;
             ErrorTextBlock.Visibility = Visibility.Visible;
@@ -90,7 +115,7 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect {
         }
 
         private void ClearError() {
-            VsAppShell.Current.AssertIsOnMainThread();
+            _services.MainThread().Assert();
 
             ErrorTextBlock.Visibility = Visibility.Collapsed;
             VariableGrid.Visibility = Visibility.Visible;

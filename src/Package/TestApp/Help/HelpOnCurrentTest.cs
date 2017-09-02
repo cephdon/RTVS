@@ -2,68 +2,66 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System.Diagnostics.CodeAnalysis;
+using System.Threading.Tasks;
 using FluentAssertions;
+using Microsoft.Common.Core.Services;
 using Microsoft.Common.Core.Test.Controls;
 using Microsoft.R.Components.ContentTypes;
 using Microsoft.R.Components.Help;
-using Microsoft.R.Components.Test.StubFactories;
-using Microsoft.R.Host.Client;
-using Microsoft.R.Host.Client.Session;
+using Microsoft.R.Components.InteractiveWorkflow;
+using Microsoft.UnitTests.Core.Threading;
 using Microsoft.UnitTests.Core.XUnit;
 using Microsoft.VisualStudio.R.Package.Help;
-using Microsoft.VisualStudio.R.Package.Shell;
 using Microsoft.VisualStudio.R.Package.Test;
-using Microsoft.VisualStudio.R.Package.Test.FakeFactories;
 using Microsoft.VisualStudio.R.Package.Test.Mocks;
 using Microsoft.VisualStudio.Text;
+using NSubstitute;
 using Xunit;
 
 namespace Microsoft.VisualStudio.R.Interactive.Test.Help {
     [ExcludeFromCodeCoverage]
+    [Category.Interactive]
     [Collection(CollectionNames.NonParallel)]
     public class HelpOnCurrentTest : HostBasedInteractiveTest {
+        public HelpOnCurrentTest(IServiceContainer services): base(services) { }
 
-        [Test(Skip = "https://github.com/Microsoft/RTVS/issues/1983")]
-        [Category.Interactive]
-        public void HelpTest() {
+        [Test]
+        public async Task HelpTest() {
             var clientApp = new RHostClientHelpTestApp();
-            using (new ControlTestScript(typeof(HelpVisualComponent))) {
+            await HostScript.InitializeAsync(clientApp);
+            using (new ControlTestScript(typeof(HelpVisualComponent), Services)) {
                 DoIdle(100);
 
                 var activeViewTrackerMock = new ActiveTextViewTrackerMock("  plot", RContentTypeDefinition.ContentType);
                 var activeReplTrackerMock = new ActiveRInteractiveWindowTrackerMock();
-                var interactiveWorkflowProvider = TestRInteractiveWorkflowProviderFactory.Create(nameof(HelpTest), SessionProvider, activeTextViewTracker: activeViewTrackerMock);
-                var interactiveWorkflow = interactiveWorkflowProvider.GetOrCreate();
+
+                var interactiveWorkflow = Substitute.For<IRInteractiveWorkflow>();
+                interactiveWorkflow.RSession.Returns(HostScript.Session);
 
                 var component = ControlWindow.Component as IHelpVisualComponent;
                 component.Should().NotBeNull();
 
                 component.VisualTheme = "Light.css";
-                clientApp.Component = component;
+                await UIThreadHelper.Instance.InvokeAsync(() => {
+                    clientApp.Component = component;
 
-                var view = activeViewTrackerMock.GetLastActiveTextView(RContentTypeDefinition.ContentType);
+                    var view = activeViewTrackerMock.GetLastActiveTextView(RContentTypeDefinition.ContentType);
+                    var cmd = new ShowHelpOnCurrentCommand(interactiveWorkflow, activeViewTrackerMock, activeReplTrackerMock);
+                    cmd.Should().BeVisibleAndDisabled();
 
-                var cmd = new ShowHelpOnCurrentCommand(interactiveWorkflow, activeViewTrackerMock, activeReplTrackerMock);
+                    view.Caret.MoveTo(new SnapshotPoint(view.TextBuffer.CurrentSnapshot, 3));
 
-                cmd.Should().BeVisibleAndDisabled();
-                view.Caret.MoveTo(new SnapshotPoint(view.TextBuffer.CurrentSnapshot, 3));
+                    cmd.Should().BeVisibleAndEnabled();
+                    cmd.Text.Should().EndWith("plot");
 
-                cmd.Should().BeVisibleAndEnabled();
-                cmd.Text.Should().EndWith("plot");
+                    clientApp.Ready.Reset();
+                    cmd.Invoke();
+                });
 
-                cmd.Invoke();
-                WaitForAppReady(clientApp);
+                await clientApp.WaitForReadyAndRenderedAsync((ms) => DoIdle(ms), nameof(HelpTest));
 
                 clientApp.Uri.IsLoopback.Should().Be(true);
                 clientApp.Uri.PathAndQuery.Should().Be("/library/graphics/html/plot.html");
-
-                DoIdle(500);
-            }
-        }
-
-        private void WaitForAppReady(RHostClientHelpTestApp clientApp) {
-            for (int i = 0; i < 100 && !clientApp.Ready; i++) {
-                DoIdle(200);
             }
         }
     }

@@ -4,21 +4,18 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Common.Core.Threading;
-using Microsoft.R.Host.Protocol;
 
 namespace Microsoft.R.Host.Client.Host {
     public interface IBrokerClient : IDisposable {
+        BrokerConnectionInfo ConnectionInfo { get; }
         string Name { get; }
         bool IsRemote { get; }
-        Uri Uri { get; }
-        AboutHost AboutHost { get; }
         bool IsVerified { get; }
 
-        Task PingAsync();
-        Task<RHost> ConnectAsync(string name, IRCallbacks callbacks, string rCommandLineArguments = null, int timeout = 3000,
-            CancellationToken cancellationToken = default(CancellationToken), ReentrancyToken reentrancyToken = default(ReentrancyToken));
+        Task<RHost> ConnectAsync(HostConnectionInfo connectionInfo, CancellationToken cancellationToken = default(CancellationToken));
         Task TerminateSessionAsync(string name, CancellationToken cancellationToken = default(CancellationToken));
-        string HandleUrl(string url, CancellationToken ct);
+        Task<string> HandleUrlAsync(string url, CancellationToken cancellationToken = default(CancellationToken));
+        Task<T> GetHostInformationAsync<T>(CancellationToken cancellationToken = default(CancellationToken));
+        Task DeleteProfileAsync(CancellationToken cancellationToken = default(CancellationToken));
     }
 }

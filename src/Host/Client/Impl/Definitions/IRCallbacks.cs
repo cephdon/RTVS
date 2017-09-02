@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Common.Core.Shell;
+using Microsoft.Common.Core.UI;
 
 namespace Microsoft.R.Host.Client {
     public interface IRCallbacks {
@@ -25,9 +25,11 @@ namespace Microsoft.R.Host.Client {
         /// Graph app may call Win32 API directly rather than going via R API callbacks.
         /// </summary>
         /// <returns>Pressed button code</returns>
-        Task<MessageButtons> ShowDialog(IReadOnlyList<IRContext> contexts, string s, MessageButtons buttons, CancellationToken ct);
+        Task<MessageButtons> ShowDialog(IReadOnlyList<IRContext> contexts, string s, MessageButtons buttons,
+            CancellationToken ct);
 
-        Task<string> ReadConsole(IReadOnlyList<IRContext> contexts, string prompt, int len, bool addToHistory, CancellationToken ct);
+        Task<string> ReadConsole(IReadOnlyList<IRContext> contexts, string prompt, int len, bool addToHistory,
+            CancellationToken ct);
 
         Task WriteConsoleEx(string buf, OutputType otype, CancellationToken ct);
 
@@ -64,18 +66,25 @@ namespace Microsoft.R.Host.Client {
         /// Asks VS to open specified URL in the help window browser
         /// </summary>
         /// <param name="url"></param>
+        /// <param name="ct"></param>
         /// <returns></returns>
-        Task WebBrowser(string url);
+        Task WebBrowser(string url, CancellationToken ct);
 
         /// <summary>
         /// Invoked in response of parameter-less library call
         /// </summary>
-        Task ViewLibrary();
+        /// <param name="cancellationToken"></param>
+        Task ViewLibrary(CancellationToken cancellationToken);
 
         /// <summary>
         /// Invoked when R calls 'pager'
         /// </summary>
-        Task ShowFile(string fileName, string tabName, bool deleteFile);
+        Task ShowFile(string fileName, string tabName, bool deleteFile, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Invoked when R calls 'edit()'
+        /// </summary>
+        Task<string> EditFileAsync(string content, string fileName, CancellationToken cancellationToken);
 
         /// <summary>
         /// Called when working directory has changed in R.
@@ -86,15 +95,21 @@ namespace Microsoft.R.Host.Client {
         /// Called when used invoked View(obj) in R.
         /// </summary>
         /// <returns></returns>
-        void ViewObject(string expression, string title);
+        Task ViewObject(string expression, string title, CancellationToken cancellationToken);
 
-        void PackagesInstalled();
+        Task BeforePackagesInstalledAsync(CancellationToken cancellationToken);
+        Task AfterPackagesInstalledAsync(CancellationToken cancellationToken);
         void PackagesRemoved();
 
         /// <summary>
         /// Called when user invokes rtvs:::fetch_file() in R.
         /// </summary>
-        /// <param name="id"></param>
-        Task<string> SaveFileAsync(string filename, byte[] data);
+        Task<string> FetchFileAsync(string remoteFileName, ulong remoteFileBlobId, string localPath,
+            CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Implements rtvs:::locstr().
+        /// </summary>
+        string GetLocalizedString(string id);
     }
 }

@@ -1,0 +1,29 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform>x86</Platform>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Manufacturer>Microsoft Corporation</Manufacturer>
+    <ManufacturerShortName>Microsoft</ManufacturerShortName>
+    <ProductName Condition=" '$(ProductName)'=='' ">R Tools for Visual Studio</ProductName>
+  </PropertyGroup>
+
+  <!-- sign settings -->
+  <PropertyGroup>
+    <SignOutput Condition=" '$(SignOutput)'=='' ">true</SignOutput>
+    <AuthenticodeCertFriendlyName>Microsoft</AuthenticodeCertFriendlyName>
+    <StrongNameCertFriendlyName>StrongName</StrongNameCertFriendlyName>
+    <VsixAuthenticodeCertFriendlyName>Vsix</VsixAuthenticodeCertFriendlyName>
+    <MsiAuthenticodeCertFriendlyName>MicrosoftSHA1</MsiAuthenticodeCertFriendlyName>
+  </PropertyGroup>
+
+  <!-- Wix defines empty targets for signing, which are overridden by custom sigining tasks (provided from  microbuild).
+       These tasks should only be run under certain conditions (TFS build which performs signing) -->
+  <PropertyGroup Condition=" '$(TF_BUILD)'=='true' and ('$(SignType)'=='real' or '$(SignType)'=='test') and '$(SignOutput)'=='true' ">
+    <RunSignTask>true</RunSignTask>
+  </PropertyGroup>
+
+</Project>

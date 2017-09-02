@@ -3,6 +3,7 @@
 
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.R.DataInspection;
 
 namespace Microsoft.R.Editor.Data {
     public interface IRSessionDataObject {
@@ -16,12 +17,14 @@ namespace Microsoft.R.Editor.Data {
 
         bool HasChildren { get; }
 
-        IReadOnlyList<int> Dimensions { get; }
+        IReadOnlyList<long> Dimensions { get; }
 
         bool IsHidden { get; }
 
         string Expression { get; }
 
         Task<IReadOnlyList<IRSessionDataObject>> GetChildrenAsync();
+
+        IREvaluationResultInfo DebugEvaluation { get; }
     }
 }

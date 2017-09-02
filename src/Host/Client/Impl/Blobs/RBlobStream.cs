@@ -6,6 +6,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using static System.FormattableString;
 
 namespace Microsoft.R.Host.Client {
     public class RBlobStream : Stream {
@@ -47,9 +48,7 @@ namespace Microsoft.R.Host.Client {
             }
         }
 
-        public override void Flush() {
-            _length = _blobService.GetBlobSizeAsync(_blob.Id).GetAwaiter().GetResult();
-        }
+        public override void Flush() => _length = _blobService.GetBlobSizeAsync(_blob.Id).GetAwaiter().GetResult();
 
         public override int Read(byte[] buffer, int offset, int count) {
             byte[] bytes = _blobService.BlobReadAsync(_blob.Id, Position, count).GetAwaiter().GetResult();
@@ -107,39 +106,30 @@ namespace Microsoft.R.Host.Client {
             }
         }
 
-        public IRBlobInfo GetBlobInfo() {
-            return _blob;
-        }
+        public IRBlobInfo GetBlobInfo() => _blob;
 
         private void ThrowIfDisposed([CallerMemberName] string callerName = "") {
             if (_isDisposed) {
-                throw new ObjectDisposedException($"{nameof(RBlobStream)} for Blob {_blob.Id} has been disposed, cannot call '{callerName}' after disposing.");
+                throw new ObjectDisposedException(
+                    Invariant($"{nameof(RBlobStream)} for Blob {_blob.Id} has been disposed, cannot call '{callerName}' after disposing."));
             }
         }
 
-        public static RBlobStream Create(IRBlobService blobService) {
-            return CreateAsync(blobService).GetAwaiter().GetResult();
-        }
+        public static RBlobStream Create(IRBlobService blobService) => CreateAsync(blobService).GetAwaiter().GetResult();
 
         public static async Task<RBlobStream> CreateAsync(IRBlobService blobService, CancellationToken ct = default(CancellationToken)) {
             var blobId = await blobService.CreateBlobAsync(ct);
             return new RBlobStream(new RBlobInfo(blobId), true, blobService);
         }
 
-        public static RBlobStream Open(IRBlobInfo blobInfo, IRBlobService blobService) {
-            return new RBlobStream(blobInfo, false, blobService);
-        }
+        public static RBlobStream Open(IRBlobInfo blobInfo, IRBlobService blobService) => new RBlobStream(blobInfo, false, blobService);
 
-        public static Task<RBlobStream> OpenAsync(IRBlobInfo blobInfo, IRBlobService blobService, CancellationToken ct = default(CancellationToken)) {
-            return Task.FromResult(Open(blobInfo, blobService));
-        }
+        public static Task<RBlobStream> OpenAsync(IRBlobInfo blobInfo, IRBlobService blobService, CancellationToken ct = default(CancellationToken)) 
+            => Task.FromResult(Open(blobInfo, blobService));
 
-        public static void Destroy(IRBlobInfo blobInfo, IRBlobService blobService) {
-            blobService.DestroyBlobsAsync(new ulong[] { blobInfo.Id }).GetAwaiter().GetResult();
-        }
+        public static void Destroy(IRBlobInfo blobInfo, IRBlobService blobService) => blobService.DestroyBlobsAsync(new ulong[] { blobInfo.Id }).GetAwaiter().GetResult();
 
-        public static Task DestroyAsync(IRBlobInfo blobInfo, IRBlobService blobService, CancellationToken ct = default(CancellationToken)) {
-            return blobService.DestroyBlobsAsync(new ulong[] { blobInfo.Id }, ct);
-        }
+        public static Task DestroyAsync(IRBlobInfo blobInfo, IRBlobService blobService, CancellationToken ct = default(CancellationToken)) 
+            => blobService.DestroyBlobsAsync(new [] { blobInfo.Id }, ct);
     }
 }

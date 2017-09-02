@@ -3,14 +3,13 @@
 
 using System.ComponentModel.Composition;
 using System.Diagnostics.CodeAnalysis;
-using Microsoft.Common.Core.Settings;
 using Microsoft.Common.Core.Shell;
-using Microsoft.Languages.Editor.Composition;
-using Microsoft.Languages.Editor.EditorFactory;
 using Microsoft.Languages.Editor.Services;
+using Microsoft.Languages.Editor.Settings;
+using Microsoft.Languages.Editor.Text;
+using Microsoft.Languages.Editor.ViewModel;
 using Microsoft.R.Components.ContentTypes;
 using Microsoft.R.Editor.Commands;
-using Microsoft.R.Editor.Document;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Utilities;
@@ -19,33 +18,29 @@ namespace Microsoft.Languages.Editor.Application.Packages {
     [ExcludeFromCodeCoverage]
     [Export(typeof(IWpfTextViewConnectionListener))]
     [ContentType(RContentTypeDefinition.ContentType)]
-    [TextViewRole(PredefinedTextViewRoles.Editable)]
+    [TextViewRole(PredefinedTextViewRoles.Document)]
     [Name("R Text View Connection Listener")]
     [Order(Before = "Default")]
     internal sealed class TestRTextViewConnectionListener : RTextViewConnectionListener {
-        private readonly ICoreShell _shell;
-
         [ImportingConstructor]
-        public TestRTextViewConnectionListener(ICoreShell shell) {
-            _shell = shell;
-        }
+        public TestRTextViewConnectionListener(ICoreShell shell): base(shell.Services) { }
 
-        protected override void OnTextBufferCreated(ITextBuffer textBuffer) {
+        protected override void OnTextBufferCreated(ITextView textView, ITextBuffer textBuffer) {
             InitEditorInstance(textBuffer);
-            base.OnTextBufferCreated(textBuffer);
+            base.OnTextBufferCreated(textView, textBuffer);
         }
 
         private void InitEditorInstance(ITextBuffer textBuffer) {
-            if (ServiceManager.GetService<IEditorInstance>(textBuffer) == null) {
-                ContentTypeImportComposer<IEditorFactory> importComposer = new ContentTypeImportComposer<IEditorFactory>(_shell.CompositionService);
-                IEditorFactory factory = importComposer.GetImport(textBuffer.ContentType.TypeName);
-                IEditorInstance editorInstance = factory.CreateEditorInstance(textBuffer, new RDocumentFactory(_shell));
+            if (textBuffer.GetService<IEditorViewModel>() == null) {
+                var locator = Services.GetService<IContentTypeServiceLocator>();
+                var factory = locator.GetService< IEditorViewModelFactory>(textBuffer.ContentType.TypeName);
+                var viewModel = factory.CreateEditorViewModel(textBuffer);
             }
         }
     }
 
     [ExcludeFromCodeCoverage]
-    [Export(typeof(IWritableSettingsStorage))]
+    [Export(typeof(IWritableEditorSettingsStorage))]
     [ContentType(RContentTypeDefinition.ContentType)]
     [Name("R Test settings")]
     [Order(Before = "Default")]

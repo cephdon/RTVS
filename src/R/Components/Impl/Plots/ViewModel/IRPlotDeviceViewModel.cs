@@ -2,10 +2,7 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
-using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Media.Imaging;
-using Microsoft.R.Host.Client;
 
 namespace Microsoft.R.Components.Plots.ViewModel {
     public interface IRPlotDeviceViewModel {
@@ -26,7 +23,7 @@ namespace Microsoft.R.Components.Plots.ViewModel {
         /// <summary>
         /// Bitmap for the active plot.
         /// </summary>
-        BitmapImage PlotImage { get; }
+        object PlotImage { get; }
 
         /// <summary>
         /// Locator mode is active, ie. we are waiting on the user
@@ -67,12 +64,12 @@ namespace Microsoft.R.Components.Plots.ViewModel {
         /// Initialize this view model for the specified device.
         /// </summary>
         /// <param name="device">Device to set.</param>
-        Task AssignAsync(IRPlotDevice device);
+        void Assign(IRPlotDevice device);
 
         /// <summary>
         /// Cleanup this view model so it can be reused later for a different device.
         /// </summary>
-        Task UnassignAsync();
+        void Unassign();
 
         /// <summary>
         /// Resize the plot.
@@ -102,24 +99,5 @@ namespace Microsoft.R.Components.Plots.ViewModel {
         /// <param name="sourcePlotId">Plot to copy.</param>
         /// <param name="isMove"><c>true</c> to delete the source plot after move.</param>
         Task CopyPlotFromAsync(Guid sourceDeviceId, Guid sourcePlotId, bool isMove);
-
-        /// <summary>
-        /// User initiated locator mode via script, wait for the user to click
-        /// on plot or end locator mode.
-        /// </summary>
-        /// <returns>Click result.</returns>
-        Task<LocatorResult> StartLocatorModeAsync(CancellationToken ct);
-
-        /// <summary>
-        /// End the locator mode with a locator result that indicate the user
-        /// wants to end the locator session.
-        /// </summary>
-        void EndLocatorMode();
-
-        /// <summary>
-        /// End the locator mode with the specified result.
-        /// </summary>
-        /// <param name="result">Click result.</param>
-        void EndLocatorMode(LocatorResult result);
     }
 }

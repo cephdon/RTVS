@@ -8,13 +8,14 @@ namespace Microsoft.R.DataInspection {
     internal sealed class RErrorInfo : REvaluationResultInfo, IRErrorInfo {
         public string ErrorText { get; }
 
-        internal RErrorInfo(IRSession session, string environmentExpression, string expression, string name, string errorText)
-            : base(session, environmentExpression, expression, name) {
+        internal RErrorInfo(IRExpressionEvaluator evaluator, string environmentExpression, string expression, string name, string errorText)
+            : base(evaluator, environmentExpression, expression, name) {
             ErrorText = errorText;
         }
 
-        public override string ToString() {
-            return Invariant($"ERROR: {ErrorText}");
-        }
+        public override string ToString() => Invariant($"ERROR: {ErrorText}");
+
+        public override IREvaluationResultInfo ToEnvironmentIndependentResult() =>
+            new RErrorInfo(Evaluator, EnvironmentExpression, this.GetEnvironmentIndependentExpression(), Name, ErrorText);
     }
 }

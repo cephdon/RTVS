@@ -11,6 +11,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Common.Core;
 using Microsoft.Common.Core.IO;
+using Microsoft.Common.Core.Shell;
 using Microsoft.R.Components.ContentTypes;
 using Microsoft.R.Components.InteractiveWorkflow;
 using Microsoft.R.Host.Client;
@@ -18,26 +19,21 @@ using Microsoft.R.Host.Client.Host;
 using Microsoft.VisualStudio.ProjectSystem;
 using Microsoft.VisualStudio.ProjectSystem.FileSystemMirroring;
 using Microsoft.VisualStudio.R.Package.Commands;
-using Microsoft.VisualStudio.R.Package.Shell;
-#if VS14
-using Microsoft.VisualStudio.ProjectSystem.Designers;
-using Microsoft.VisualStudio.ProjectSystem.Utilities;
-#endif
 
 namespace Microsoft.VisualStudio.R.Package.ProjectSystem.Commands {
     [ExportCommandGroup("AD87578C-B324-44DC-A12A-B01A6ED5C6E3")]
     [AppliesTo(ProjectConstants.RtvsProjectCapability)]
     internal sealed class SourceFilesCommand : SendFileCommandBase, IAsyncCommandGroupHandler {
         private readonly ConfiguredProject _configuredProject;
-        private IRInteractiveWorkflowProvider _interactiveWorkflowProvider;
-        private readonly IApplicationShell _appShell;
+        private IRInteractiveWorkflowVisualProvider _interactiveWorkflowProvider;
+        private readonly ICoreShell _shell;
 
         [ImportingConstructor]
-        public SourceFilesCommand(ConfiguredProject configuredProject, IRInteractiveWorkflowProvider interactiveWorkflowProvider, IApplicationShell appShell) :
-            base(interactiveWorkflowProvider, appShell, new FileSystem()) {
+        public SourceFilesCommand(ConfiguredProject configuredProject, IRInteractiveWorkflowVisualProvider interactiveWorkflowProvider, ICoreShell shell) :
+            base(interactiveWorkflowProvider, shell.UI(), shell.FileSystem()) {
             _configuredProject = configuredProject;
             _interactiveWorkflowProvider = interactiveWorkflowProvider;
-            _appShell = appShell;
+            _shell = shell;
         }
 
         public Task<CommandStatusResult> GetCommandStatusAsync(IImmutableSet<IProjectTree> nodes, long commandId, bool focused, string commandText, CommandStatus progressiveStatus) {
@@ -56,7 +52,7 @@ namespace Microsoft.VisualStudio.R.Package.ProjectSystem.Commands {
             if (commandId == RPackageCommandId.icmdSourceSelectedFiles || commandId == RPackageCommandId.icmdSourceSelectedFilesWithEcho) {
                 bool echo = commandId == RPackageCommandId.icmdSourceSelectedFilesWithEcho;
                 
-                IFileSystem fs = new FileSystem();
+                IFileSystem fs = _shell.FileSystem();
                 IEnumerable<string> rFiles = Enumerable.Empty<string>();
 
                 var workflow = _interactiveWorkflowProvider.GetOrCreate();
@@ -83,7 +79,7 @@ namespace Microsoft.VisualStudio.R.Package.ProjectSystem.Commands {
 
                     workflow.Operations.SourceFiles(rFiles, echo);
                 } catch (IOException ex) {
-                    _appShell.ShowErrorMessage(string.Format(CultureInfo.InvariantCulture, Resources.Error_CannotTransferFile, ex.Message));
+                    _shell.ShowErrorMessage(string.Format(CultureInfo.InvariantCulture, Resources.Error_CannotTransferFile, ex.Message));
                 } 
                 catch (RHostDisconnectedException) {
                     workflow.ActiveWindow.InteractiveWindow.WriteErrorLine(Resources.Error_CannotTransferNoRSession);

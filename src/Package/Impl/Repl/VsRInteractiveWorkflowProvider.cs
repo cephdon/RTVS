@@ -4,10 +4,7 @@
 using System;
 using System.ComponentModel.Composition;
 using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Common.Core;
 using Microsoft.Common.Core.Disposables;
-using Microsoft.Common.Core.Services;
 using Microsoft.Common.Core.Shell;
 using Microsoft.R.Components.ConnectionManager;
 using Microsoft.R.Components.History;
@@ -15,17 +12,11 @@ using Microsoft.R.Components.InteractiveWorkflow;
 using Microsoft.R.Components.InteractiveWorkflow.Implementation;
 using Microsoft.R.Components.PackageManager;
 using Microsoft.R.Components.Plots;
-using Microsoft.R.Components.Settings;
-using Microsoft.R.Components.Workspace;
-using Microsoft.R.Host.Client;
-using Microsoft.R.Host.Client.Session;
-using Microsoft.VisualStudio.R.Package.Commands;
-using Microsoft.VisualStudio.R.Package.Shell;
-using Microsoft.VisualStudio.R.Packages.R;
 
 namespace Microsoft.VisualStudio.R.Package.Repl {
     [Export(typeof(IRInteractiveWorkflowProvider))]
-    internal class VsRInteractiveWorkflowProvider : IRInteractiveWorkflowProvider, IDisposable {
+    [Export(typeof(IRInteractiveWorkflowVisualProvider))]
+    internal class VsRInteractiveWorkflowProvider : IRInteractiveWorkflowVisualProvider, IRInteractiveWorkflowProvider, IDisposable {
         private readonly DisposableBag _disposableBag = DisposableBag.Create<VsRInteractiveWorkflowProvider>();
 
         private readonly IConnectionManagerProvider _connectionsProvider;
@@ -34,72 +25,54 @@ namespace Microsoft.VisualStudio.R.Package.Repl {
         private readonly IRPlotManagerProvider _plotsProvider;
         private readonly IActiveWpfTextViewTracker _activeTextViewTracker;
         private readonly IDebuggerModeTracker _debuggerModeTracker;
-        private readonly IApplicationShell _shell;
-        private readonly IWorkspaceServices _wss;
-        private readonly IRSettings _settings;
-        private readonly ICoreServices _services;
+        private readonly IApplication _app;
+        private readonly ICoreShell _shell;
 
-        private Lazy<IRInteractiveWorkflow> _instanceLazy;
+        private Lazy<IRInteractiveWorkflowVisual> _instanceLazy;
 
         [ImportingConstructor]
-        public VsRInteractiveWorkflowProvider(IConnectionManagerProvider connectionsProvider
-            , IRHistoryProvider historyProvider
-            , IRPackageManagerProvider packagesProvider
-            , IRPlotManagerProvider plotsProvider
-            , IActiveWpfTextViewTracker activeTextViewTracker
-            , IDebuggerModeTracker debuggerModeTracker
-            , IApplicationShell shell
-            , IWorkspaceServices wss
-            , IRSettings settings
-            , ICoreServices services) {
-
-            _connectionsProvider = connectionsProvider;
-            _historyProvider = historyProvider;
-            _packagesProvider = packagesProvider;
-            _plotsProvider = plotsProvider;
-            _activeTextViewTracker = activeTextViewTracker;
-            _debuggerModeTracker = debuggerModeTracker;
+        public VsRInteractiveWorkflowProvider(ICoreShell shell) {
             _shell = shell;
-            _wss = wss;
-            _settings = settings;
-            _services = services;
+
+            _connectionsProvider = shell.GetService<IConnectionManagerProvider>();
+            _historyProvider = shell.GetService<IRHistoryProvider>();
+            _packagesProvider = shell.GetService<IRPackageManagerProvider>();
+            _plotsProvider = shell.GetService<IRPlotManagerProvider>();
+            _activeTextViewTracker = shell.GetService<IActiveWpfTextViewTracker>();
+            _debuggerModeTracker = shell.GetService<IDebuggerModeTracker>();
+            _connectionsProvider = shell.GetService<IConnectionManagerProvider>();
+
+            _app = _shell.GetService<IApplication>();
+            _app.Terminating += OnApplicationTerminating;
         }
 
+        private void OnApplicationTerminating(object sender, EventArgs e) => Dispose();
+
         public void Dispose() {
+            _app.Terminating -= OnApplicationTerminating;
             _disposableBag.TryDispose();
         }
 
-        public IRInteractiveWorkflow GetOrCreate() {
+        IRInteractiveWorkflowVisual IRInteractiveWorkflowVisualProvider.GetOrCreate() { 
             _disposableBag.ThrowIfDisposed();
-
-            Interlocked.CompareExchange(ref _instanceLazy, new Lazy<IRInteractiveWorkflow>(CreateRInteractiveWorkflow), null);
+            Interlocked.CompareExchange(ref _instanceLazy, new Lazy<IRInteractiveWorkflowVisual>(CreateRInteractiveWorkflow), null);
             return _instanceLazy.Value;
         }
 
+        IRInteractiveWorkflow IRInteractiveWorkflowProvider.GetOrCreate() => ((IRInteractiveWorkflowVisualProvider)this).GetOrCreate();
+
         public IRInteractiveWorkflow Active => (_instanceLazy != null && _instanceLazy.IsValueCreated) ? _instanceLazy.Value : null;
 
-        private IRInteractiveWorkflow CreateRInteractiveWorkflow() {
-            var sessionProvider = new RSessionProvider(_services, new InteractiveWindowConsole( _shell, _instanceLazy));
-            var workflow = new RInteractiveWorkflow(sessionProvider, _connectionsProvider, _historyProvider, _packagesProvider, 
-                                                    _plotsProvider, _activeTextViewTracker, _debuggerModeTracker, 
-                                                    _shell, _settings, _wss, () => DisposeInstance(sessionProvider));
-            _disposableBag.Add(workflow);
-
-            sessionProvider.BrokerChanging += OnBrokerChanging;
-            return workflow;
+        private IRInteractiveWorkflowVisual CreateRInteractiveWorkflow() {
+            _disposableBag.Add(DisposeInstance);
+            return new RInteractiveWorkflow(_connectionsProvider, _historyProvider, _packagesProvider, _plotsProvider, _activeTextViewTracker, _debuggerModeTracker, _shell);
         }
 
-        private void OnBrokerChanging(object sender, EventArgs e) {
-            Task.Run(async () => {
-                await _shell.SwitchToMainThreadAsync();
-                _shell.PostCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdShowReplWindow);
-            }).DoNotWait();
-        }
-
-        private void DisposeInstance(IRSessionProvider sessionProvider) {
-            sessionProvider.BrokerChanging -= OnBrokerChanging;
-            sessionProvider.Dispose();
-            _instanceLazy = null;
+        private void DisposeInstance() {
+            var lazy = Interlocked.Exchange(ref _instanceLazy, null);
+            if (lazy != null && lazy.IsValueCreated) {
+                lazy.Value.Dispose();
+            }
         }
     }
 }

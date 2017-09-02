@@ -17,38 +17,24 @@ namespace Microsoft.R.Core.AST.Scopes {
     [DebuggerDisplay("Simple Scope, Children: {Children.Count} [{Start}...{End})")]
     public sealed class SimpleScope : AstNode, IScope {
         private IStatement _statement;
-        private string _terminatingKeyword;
+        private readonly string _terminatingKeyword;
 
         #region IScope
-        public string Name {
-            get { return string.Empty; }
-        }
+        public string Name => string.Empty;
+        public TokenNode OpenCurlyBrace => null;
+        public TokenNode CloseCurlyBrace => null;
+        public bool KnitrOptions => false;
 
-        public TokenNode OpenCurlyBrace {
-            get { return null; }
-        }
-
-        public TokenNode CloseCurlyBrace {
-            get { return null; }
-        }
-
-        public IReadOnlyDictionary<string, int> Functions {
-            get { return StaticDictionary<string, int>.Empty; }
-        }
-
-        public IReadOnlyDictionary<string, int> Variables {
-            get { return StaticDictionary<string, int>.Empty; }
-        }
-        public IReadOnlyTextRangeCollection<IStatement> Statements {
-            get { return new TextRangeCollection<IStatement>() { _statement }; }
-        }
+        public IReadOnlyDictionary<string, int> Functions => StaticDictionary<string, int>.Empty;
+        public IReadOnlyDictionary<string, int> Variables => StaticDictionary<string, int>.Empty;
+        public IReadOnlyTextRangeCollection<IStatement> Statements => new TextRangeCollection<IStatement> { _statement };
         #endregion
 
         public SimpleScope(string terminatingKeyword) {
             _terminatingKeyword = terminatingKeyword;
         }
 
-        public override bool Parse(ParseContext context, IAstNode parent) {
+        public override bool Parse(ParseContext context, IAstNode parent = null) {
             _statement = Statement.Create(context, this, _terminatingKeyword);
             if (_statement != null) {
                 if (_statement.Parse(context, this)) {

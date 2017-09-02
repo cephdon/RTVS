@@ -1,18 +1,18 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.Common.Core;
-using Microsoft.Common.Core.Test.Fakes.Shell;
+using Microsoft.Common.Core.Services;
+using Microsoft.Common.Core.Test.Fixtures;
 using Microsoft.R.Host.Client;
 using Microsoft.R.Host.Client.Session;
 using Microsoft.R.Host.Client.Test.Script;
+using Microsoft.UnitTests.Core.Threading;
 using Microsoft.UnitTests.Core.XUnit;
 using Microsoft.UnitTests.Core.XUnit.MethodFixtures;
 using Microsoft.VisualStudio.R.Package.DataInspect;
@@ -23,21 +23,17 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
     [ExcludeFromCodeCoverage]
     [Collection(CollectionNames.NonParallel)]   // required for tests using R Host 
     public class REnvironmentProviderTest : IAsyncLifetime {
-        private readonly MethodInfo _testMethod;
         private readonly IRSessionProvider _sessionProvider;
         private readonly IRSession _session;
 
-        public REnvironmentProviderTest(TestMethodFixture testMethod) {
-            _testMethod = testMethod.MethodInfo;
-            _sessionProvider = new RSessionProvider(TestCoreServices.CreateReal());
-            _session = _sessionProvider.GetOrCreate(Guid.NewGuid());
+        public REnvironmentProviderTest(IServiceContainer services, TestMethodFixture testMethod) {
+            _sessionProvider = new RSessionProvider(services);
+            _session = _sessionProvider.GetOrCreate(testMethod.FileSystemSafeName);
         }
 
         public async Task InitializeAsync() {
             await _sessionProvider.TrySwitchBrokerAsync(nameof(REnvironmentProviderTest));
-            await _session.StartHostAsync(new RHostStartupInfo {
-                Name = _testMethod.Name
-            }, new RHostClientTestApp(), 50000);
+            await _session.StartHostAsync(new RHostStartupInfo (), new RHostClientTestApp(), 50000);
         }
 
         public async Task DisposeAsync() {
@@ -100,7 +96,7 @@ namespace Microsoft.VisualStudio.R.Package.Test.DataInspect {
             // Wait for prompt to appear.
             using (await _session.BeginInteractionAsync()) { }
 
-            var envProvider = new REnvironmentProvider(_session);
+            var envProvider = new REnvironmentProvider(_session, UIThreadHelper.Instance.MainThread);
             var envTcs = new TaskCompletionSource<IREnvironment[]>();
             envProvider.Environments.CollectionChanged += (sender, args) => {
                 envTcs.TrySetResult(envProvider.Environments.ToArray());

@@ -8,14 +8,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Common.Core;
 using Microsoft.Common.Core.IO;
+using Microsoft.R.Components.Application.Configuration;
 using Microsoft.VisualStudio.ProjectSystem;
 using Microsoft.VisualStudio.R.Package.ProjectSystem;
-#if VS14
-using Microsoft.VisualStudio.ProjectSystem.Utilities;
-#endif
-#if VS15
 using Microsoft.VisualStudio.ProjectSystem.Properties;
-#endif
 
 namespace Microsoft.VisualStudio.R.Package {
     [Export(typeof(ProjectProperties))]
@@ -26,7 +22,7 @@ namespace Microsoft.VisualStudio.R.Package {
         [ImportingConstructor]
         public ProjectProperties(ConfiguredProject configuredProject)
             : base(configuredProject) {
-            _fileSystem = new FileSystem();
+            _fileSystem = new WindowsFileSystem();
         }
 
         /// <summary>
@@ -108,7 +104,7 @@ namespace Microsoft.VisualStudio.R.Package {
         /// Gets the destination path for a project on the remote host.
         /// </summary>
         /// <remarks>
-        /// Default destination is ~/RTVSProjects/.
+        /// Default destination is ~/
         /// </remarks>
         public async Task<string> GetRemoteProjectPathAsync() {
             var runProps = await GetConfigurationRunPropertiesAsync();
@@ -134,13 +130,14 @@ namespace Microsoft.VisualStudio.R.Package {
         /// Gets the filter string that selects files to be sent to remote host.
         /// </summary>
         /// <remarks>
-        /// Default filter string is ".r;.rmd;". This selects all R script files, R markdown files.
+        /// Default filter string is ".r;.rmd;.sql;.md;.cpp;". This selects all R script files, 
+        /// R markdown files.
         /// </remarks>
         public async Task<string> GetFileFilterAsync() {
             var runProps = await GetConfigurationRunPropertiesAsync();
             var filter = await runProps.TransferFilesFilter.GetEvaluatedValueAsync();
             if (string.IsNullOrWhiteSpace(filter)) {
-                return "*.r;*.rmd;";
+                return "*.r;*.rmd;*.sql;*.md;*.cpp";
             }
             return filter;
         }
@@ -149,7 +146,8 @@ namespace Microsoft.VisualStudio.R.Package {
         /// Gets the filter string that selects files to be sent to remote host.
         /// </summary>
         /// <remarks>
-        /// Default filter string is ".r;.rmd;". This selects all R script files, R markdown files.
+        /// Default filter string is ".r;.rmd;.sql;.md;.cpp;". This selects all R script files, 
+        /// R markdown files.
         /// </remarks>
         public async Task SetFileFilterAsync(string fileTransferFilter) {
             var runProps = await GetConfigurationRunPropertiesAsync();
@@ -162,7 +160,7 @@ namespace Microsoft.VisualStudio.R.Package {
         public async Task<bool> GetTransferProjectOnRunAsync() {
             var runProps = await GetConfigurationRunPropertiesAsync();
             var val = await runProps.TransferProjectOnRun.GetEvaluatedValueAsync();
-            return ParseBooleanProperty(val, false);
+            return ParseBooleanProperty(val, true);
         }
 
         /// <summary>

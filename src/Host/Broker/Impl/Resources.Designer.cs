@@ -10,6 +10,7 @@
 
 namespace Microsoft.R.Host.Broker {
     using System;
+    using System.Reflection;
     
     
     /// <summary>
@@ -39,7 +40,7 @@ namespace Microsoft.R.Host.Broker {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Microsoft.R.Host.Broker.Resources", typeof(Resources).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Microsoft.R.Host.Broker.Resources", typeof(Resources).GetTypeInfo().Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
@@ -61,7 +62,7 @@ namespace Microsoft.R.Host.Broker {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Requested to write server.urls to pipe &apos;{0}&apos;, but it is not a valid pipe handle.
+        ///   Looks up a localized string similar to Requested to write &apos;urls&apos; to pipe &apos;{0}&apos;, but it is not a valid pipe handle.
         /// </summary>
         internal static string Critical_InvalidPipeHandle {
             get {
@@ -97,7 +98,7 @@ namespace Microsoft.R.Host.Broker {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Requested to write server.urls to pipe &apos;{0}&apos;, but timed out while trying to connect to pipe.
+        ///   Looks up a localized string similar to Requested to write &apos;urls&apos; to pipe &apos;{0}&apos;, but timed out while trying to connect to pipe.
         /// </summary>
         internal static string Critical_PipeConnectTimeOut {
             get {
@@ -115,6 +116,78 @@ namespace Microsoft.R.Host.Broker {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Could not find session with id: {0}.
+        /// </summary>
+        internal static string Debug_SessionNotFound {
+            get {
+                return ResourceManager.GetString("Debug_SessionNotFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Default.
+        /// </summary>
+        internal static string Default {
+            get {
+                return ResourceManager.GetString("Default", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to User {0} session creation blocked due to pending profile deletion..
+        /// </summary>
+        internal static string Error_BlockedByProfileDeletion {
+            get {
+                return ResourceManager.GetString("Error_BlockedByProfileDeletion", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Client disconnected from R session due to error: {0}.
+        /// </summary>
+        internal static string Error_ClientToHostConnectionFailed {
+            get {
+                return ResourceManager.GetString("Error_ClientToHostConnectionFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Config file load failed: {0}.
+        /// </summary>
+        internal static string Error_ConfigLoadFailed {
+            get {
+                return ResourceManager.GetString("Error_ConfigLoadFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Config file parse failed: {0}.
+        /// </summary>
+        internal static string Error_ConfigParseFailed {
+            get {
+                return ResourceManager.GetString("Error_ConfigParseFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Server port {0} is already in use..
+        /// </summary>
+        internal static string Error_ConfiguredPortNotAvailable {
+            get {
+                return ResourceManager.GetString("Error_ConfiguredPortNotAvailable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to R Host exited with error : {0}.
+        /// </summary>
+        internal static string Error_ExitRHost {
+            get {
+                return ResourceManager.GetString("Error_ExitRHost", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Failed to retrieve R installation data for interpreter \&quot;{0}\&quot; at \&quot;{1}\&quot;.
         /// </summary>
         internal static string Error_FailedRInstallationData {
@@ -124,20 +197,20 @@ namespace Microsoft.R.Host.Broker {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Failed to get user profile directory for user {0} with WIN32 error code 0x{1}.
+        ///   Looks up a localized string similar to Client failed to disconnect gracefully: {0}.
         /// </summary>
-        internal static string Error_GetUserProfileDirectory {
+        internal static string Error_GracefulDisconnectFailed {
             get {
-                return ResourceManager.GetString("Error_GetUserProfileDirectory", resourceCulture);
+                return ResourceManager.GetString("Error_GracefulDisconnectFailed", resourceCulture);
             }
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Log on failed for user: {0}.
+        ///   Looks up a localized string similar to R session disconnected from client due to error: {0}.
         /// </summary>
-        internal static string Error_LogOnFailed {
+        internal static string Error_HostToClientConnectionFailed {
             get {
-                return ResourceManager.GetString("Error_LogOnFailed", resourceCulture);
+                return ResourceManager.GetString("Error_HostToClientConnectionFailed", resourceCulture);
             }
         }
         
@@ -151,65 +224,11 @@ namespace Microsoft.R.Host.Broker {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Profile creation failed for user {0} with WIN32 error code 0x{1}.
-        /// </summary>
-        internal static string Error_ProfileCreationFailed {
-            get {
-                return ResourceManager.GetString("Error_ProfileCreationFailed", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Profile creation failed for user {0} with invalid response from the {1} service..
-        /// </summary>
-        internal static string Error_ProfileCreationFailedInvalidResponse {
-            get {
-                return ResourceManager.GetString("Error_ProfileCreationFailedInvalidResponse", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Profile creation failed for user {0}..
-        /// </summary>
-        internal static string Error_ProfileCreationFailedIO {
-            get {
-                return ResourceManager.GetString("Error_ProfileCreationFailedIO", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to R Host process failed to start. Error: {0}.
+        ///   Looks up a localized string similar to R session process failed to start. Error: {0}.
         /// </summary>
         internal static string Error_RHostFailedToStart {
             get {
                 return ResourceManager.GetString("Error_RHostFailedToStart", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Specified R interpreter does not exist.
-        /// </summary>
-        internal static string Error_SpecifiedRInterpreterNotFound {
-            get {
-                return ResourceManager.GetString("Error_SpecifiedRInterpreterNotFound", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to User name parsing failed for user {0} with WIN32 error code 0x{1}.
-        /// </summary>
-        internal static string Error_UserNameParse {
-            get {
-                return ResourceManager.GetString("Error_UserNameParse", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Provided identity must be a {0}.
-        /// </summary>
-        internal static string Exception_InvalidIdentityType {
-            get {
-                return ResourceManager.GetString("Exception_InvalidIdentityType", resourceCulture);
             }
         }
         
@@ -232,15 +251,6 @@ namespace Microsoft.R.Host.Broker {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Broker name &apos;{0}&apos; assigned.
-        /// </summary>
-        internal static string Info_BrokerName {
-            get {
-                return ResourceManager.GetString("Info_BrokerName", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Monitoring parent process {0}.
         /// </summary>
         internal static string Info_MonitoringParentProcess {
@@ -259,25 +269,7 @@ namespace Microsoft.R.Host.Broker {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Profile already exists for user: {0}.
-        /// </summary>
-        internal static string Info_ProfileAlreadyExists {
-            get {
-                return ResourceManager.GetString("Info_ProfileAlreadyExists", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Profile created for user: {0}.
-        /// </summary>
-        internal static string Info_ProfileCreated {
-            get {
-                return ResourceManager.GetString("Info_ProfileCreated", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to RHost started for session {0} of user {1}.
+        ///   Looks up a localized string similar to R session started for connection {0} of user {1}.
         /// </summary>
         internal static string Info_StartedRHost {
             get {
@@ -286,20 +278,11 @@ namespace Microsoft.R.Host.Broker {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Starting RHost for session {0} of user {1} with command line: {2} {3}.
+        ///   Looks up a localized string similar to Starting R session for connection {0} of user {1} with command line: {2}.
         /// </summary>
         internal static string Info_StartingRHost {
             get {
                 return ResourceManager.GetString("Info_StartingRHost", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Microsoft.R.Host.UserProfile.
-        /// </summary>
-        internal static string Info_UserProfileServiceName {
-            get {
-                return ResourceManager.GetString("Info_UserProfileServiceName", resourceCulture);
             }
         }
         
@@ -313,7 +296,7 @@ namespace Microsoft.R.Host.Broker {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Certificale issued by {0}.
+        ///   Looks up a localized string similar to Certificate issued by {0}.
         /// </summary>
         internal static string Trace_CertificateIssuer {
             get {
@@ -322,7 +305,7 @@ namespace Microsoft.R.Host.Broker {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Certificale issued to {0}.
+        ///   Looks up a localized string similar to Certificate issued to {0}.
         /// </summary>
         internal static string Trace_CertificateSubject {
             get {
@@ -340,24 +323,6 @@ namespace Microsoft.R.Host.Broker {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to {0} = {1}.
-        /// </summary>
-        internal static string Trace_EnvironmentVariable {
-            get {
-                return ResourceManager.GetString("Trace_EnvironmentVariable", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Creating user environment variables for user {0} with profile directory {1}.
-        /// </summary>
-        internal static string Trace_EnvironmentVariableCreationBegin {
-            get {
-                return ResourceManager.GetString("Trace_EnvironmentVariableCreationBegin", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to |{0}|: {1}.
         /// </summary>
         internal static string Trace_ErrorDataReceived {
@@ -367,25 +332,7 @@ namespace Microsoft.R.Host.Broker {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Log on succeeded for user: {0}.
-        /// </summary>
-        internal static string Trace_LogOnSuccess {
-            get {
-                return ResourceManager.GetString("Trace_LogOnSuccess", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Attempting log on for user: {0}.
-        /// </summary>
-        internal static string Trace_LogOnUserBegin {
-            get {
-                return ResourceManager.GetString("Trace_LogOnUserBegin", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Writing server.urls to pipe &apos;{0}&apos;:{1}{2}.
+        ///   Looks up a localized string similar to Writing &apos;urls&apos; to pipe &apos;{0}&apos;:{1}{2}.
         /// </summary>
         internal static string Trace_ServerUrlsToPipeBegin {
             get {
@@ -394,29 +341,11 @@ namespace Microsoft.R.Host.Broker {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Wrote server.urls to pipe &apos;{0}&apos;.
+        ///   Looks up a localized string similar to Wrote &apos;urls&apos; to pipe &apos;{0}&apos;.
         /// </summary>
         internal static string Trace_ServerUrlsToPipeDone {
             get {
                 return ResourceManager.GetString("Trace_ServerUrlsToPipeDone", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Attempting to create profile for user: {0}.
-        /// </summary>
-        internal static string Trace_UserProfileCreation {
-            get {
-                return ResourceManager.GetString("Trace_UserProfileCreation", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to User {0} profile directory: {1}.
-        /// </summary>
-        internal static string Trace_UserProfileDirectory {
-            get {
-                return ResourceManager.GetString("Trace_UserProfileDirectory", resourceCulture);
             }
         }
     }

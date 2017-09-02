@@ -3,101 +3,97 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Common.Core;
 using Microsoft.Common.Core.IO;
+using Microsoft.Common.Core.UI;
 using Microsoft.R.Components.InteractiveWorkflow;
+using Microsoft.R.Components.InteractiveWorkflow.Implementation;
 using Microsoft.R.Host.Client;
 using Microsoft.R.Host.Client.Host;
-using Microsoft.VisualStudio.Shell.Interop;
-using Microsoft.VisualStudio.R.Package.Shell;
-#if VS14
-using Microsoft.VisualStudio.ProjectSystem.Designers;
-using Microsoft.VisualStudio.ProjectSystem.Utilities;
-#endif
 
 namespace Microsoft.VisualStudio.R.Package.ProjectSystem.Commands {
     internal class SendFileCommandBase {
-        private readonly IRInteractiveWorkflowProvider _interactiveWorkflowProvider;
+        private readonly IRInteractiveWorkflowVisualProvider _interactiveWorkflowProvider;
         private readonly IFileSystem _fs;
-        private readonly IApplicationShell _appShell;
+        private readonly IUIService _ui;
 
-        protected SendFileCommandBase(IRInteractiveWorkflowProvider interactiveWorkflowProvider, IApplicationShell appShell, IFileSystem fs) {
+        protected SendFileCommandBase(IRInteractiveWorkflowVisualProvider interactiveWorkflowProvider, IUIService ui, IFileSystem fs) {
             _interactiveWorkflowProvider = interactiveWorkflowProvider;
-            _appShell = appShell;
+            _ui = ui;
             _fs = fs;
         }
 
-        protected async Task<bool> SendToRemoteAsync(IEnumerable<string> files, string projectDir, string projectName, string remotePath) {
-            IVsStatusbar statusBar = _appShell.GetGlobalService<IVsStatusbar>(typeof(SVsStatusbar));
-            return await SendToRemoteWorkerAsync(files, projectDir, projectName, remotePath, statusBar);
+        protected Task SendToRemoteAsync(IEnumerable<string> files, string projectDir, string projectName, string remotePath) {
+            _ui.ProgressDialog.Show(async (p, ct) => await SendToRemoteWorkerAsync(files, projectDir, projectName, remotePath, p, ct), Resources.Info_TransferringFiles, 100, 500);
+            return Task.CompletedTask;
         }
 
-        private async Task<bool> SendToRemoteWorkerAsync(IEnumerable<string> files, string projectDir, string projectName, string remotePath, IVsStatusbar statusBar) {
+        private async Task SendToRemoteWorkerAsync(IEnumerable<string> files, string projectDir, string projectName, string remotePath, IProgress<ProgressDialogData> progress, CancellationToken ct) {
             await TaskUtilities.SwitchToBackgroundThread();
 
-            string currentStatusText;
-            statusBar.GetText(out currentStatusText);
-
             var workflow = _interactiveWorkflowProvider.GetOrCreate();
-            var outputWindow = workflow.ActiveWindow.InteractiveWindow;
-            uint cookie = 0;
+            IConsole console = new InteractiveWindowConsole(workflow);
+
             try {
                 var session = workflow.RSession;
-                statusBar.SetText(Resources.Info_CompressingFiles);
-                statusBar.Progress(ref cookie, 1, "", 0, 0);
-
                 int count = 0;
-                uint total = (uint)files.Count() * 2; // for compressing and sending
+                int total = files.Count();
+
+                progress.Report(new ProgressDialogData(0, Resources.Info_CompressingFiles));
+
+                if (ct.IsCancellationRequested) {
+                    return;
+                }
+
+                List<string> paths = new List<string>();
+                // Compression phase : 1 of 3 phases.
                 string compressedFilePath = string.Empty;
-                await Task.Run(() => {
-                    compressedFilePath = _fs.CompressFiles(files, projectDir, new Progress<string>((p) => {
-                        Interlocked.Increment(ref count);
-                        statusBar.Progress(ref cookie, 1, string.Format(Resources.Info_CompressingFile, Path.GetFileName(p)), (uint)count, total);
-                        string dest = p.MakeRelativePath(projectDir).ProjectRelativePathToRemoteProjectPath(remotePath, projectName);
-                        _appShell.DispatchOnUIThread(() => {
-                            outputWindow.WriteLine(string.Format(Resources.Info_LocalFilePath, p));
-                            outputWindow.WriteLine(string.Format(Resources.Info_RemoteFilePath, dest));
-                        });
-                    }), CancellationToken.None);
-                    statusBar.Progress(ref cookie, 0, "", 0, 0);
-                });
+                compressedFilePath = _fs.CompressFiles(files, projectDir, new Progress<string>((p) => {
+                    Interlocked.Increment(ref count);
+                    int step = (count * 100 / total) / 3; // divide by 3, this is for compression phase.
+                    progress.Report(new ProgressDialogData(step, Resources.Info_CompressingFile.FormatInvariant(Path.GetFileName(p), _fs.FileSize(p))));
+                    string dest = p.MakeRelativePath(projectDir).ProjectRelativePathToRemoteProjectPath(remotePath, projectName);
+                    paths.Add($"{Resources.Info_LocalFilePath.FormatInvariant(p)}{Environment.NewLine}{Resources.Info_RemoteFilePath.FormatInvariant(dest)}");
+                }), ct);
+
+                if (ct.IsCancellationRequested) {
+                    return;
+                }
 
                 using (var fts = new DataTransferSession(session, _fs)) {
-                    cookie = 0;
-                    statusBar.SetText(Resources.Info_TransferringFiles);
+                    long size = _fs.FileSize(compressedFilePath);
 
-                    total = (uint)_fs.FileSize(compressedFilePath);
-
+                    // Transfer phase: 2 of 3 phases
                     var remoteFile = await fts.SendFileAsync(compressedFilePath, true, new Progress<long>((b) => {
-                        statusBar.Progress(ref cookie, 1, Resources.Info_TransferringFiles, (uint)b, total);
-                    }));
+                        int step = 33; // start with 33% to indicate compression phase is done.
+                        step += (int)((((double)b / (double)size) * 100) / 3); // divide by 3, this is for transfer phase.
+                        progress.Report(new ProgressDialogData(step, Resources.Info_TransferringFilesWithSize.FormatInvariant(b, size)));
+                    }), ct);
 
-                    statusBar.SetText(Resources.Info_ExtractingFilesInRHost);
-                    await session.EvaluateAsync<string>($"rtvs:::save_to_project_folder({remoteFile.Id}, {projectName.ToRStringLiteral()}, '{remotePath.ToRPath()}')", REvaluationKind.Normal);
+                    if (ct.IsCancellationRequested) {
+                        return;
+                    }
 
-                    _appShell.DispatchOnUIThread(() => {
-                        outputWindow.WriteLine(Resources.Info_TransferringFilesDone);
-                    });
+                    // Extract phase: 3 of 3 phases
+                    // start with 66% completion to indicate compression and transfer phases are done.
+                    progress.Report(new ProgressDialogData(66, Resources.Info_ExtractingFilesInRHost));
+                    await session.EvaluateAsync<string>($"rtvs:::save_to_project_folder({remoteFile.Id}, {projectName.ToRStringLiteral()}, '{remotePath.ToRPath()}')", REvaluationKind.Normal, ct);
+
+                    progress.Report(new ProgressDialogData(100, Resources.Info_TransferringFilesDone));
+
+                    paths.ForEach((s) => console.WriteLine(s));
                 }
-            } catch(UnauthorizedAccessException uaex) {
-                _appShell.ShowErrorMessage(string.Format(CultureInfo.InvariantCulture, Resources.Error_CannotTransferFile, uaex.Message));
-            } catch (IOException ioex) {
-                _appShell.ShowErrorMessage(string.Format(CultureInfo.InvariantCulture, Resources.Error_CannotTransferFile, ioex.Message));
+            } catch (TaskCanceledException) {
+                console.WriteErrorLine(Resources.Info_FileTransferCanceled);
             } catch (RHostDisconnectedException rhdex) {
-                _appShell.DispatchOnUIThread(() => {
-                    outputWindow.WriteErrorLine(Resources.Error_CannotTransferNoRSession.FormatInvariant(rhdex.Message));
-                });
-            } finally {
-                statusBar.Progress(ref cookie, 0, "", 0, 0);
-                statusBar.SetText(currentStatusText);
+                console.WriteErrorLine(Resources.Error_CannotTransferNoRSession.FormatInvariant(rhdex.Message));
+            } catch (Exception ex) when (ex is UnauthorizedAccessException || ex is IOException) {
+                _ui.ShowErrorMessage(Resources.Error_CannotTransferFile.FormatInvariant(ex.Message));
             }
-
-            return true;
         }
     }
 }

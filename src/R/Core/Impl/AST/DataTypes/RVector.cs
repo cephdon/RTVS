@@ -19,11 +19,12 @@ namespace Microsoft.R.Core.AST.DataTypes {
         private Lazy<HybridDictionary> vector = new Lazy<HybridDictionary>(() => new HybridDictionary());
 
         public RVector(RMode mode, int length) {
-            if (length < 0)
+            if (length < 0) {
                 throw new ArgumentOutOfRangeException(nameof(length));
+            }
 
-            this.Mode = mode;
-            this.Length = length;
+            Mode = mode;
+            Length = length;
         }
 
         #region IRVector<T>
@@ -35,33 +36,33 @@ namespace Microsoft.R.Core.AST.DataTypes {
         /// <summary>
         /// Number of elements in the vector
         /// </summary>
-        public int Length { get; private set; }
+        public int Length { get; }
 
         public virtual T this[int index] {
             get {
-                if (this.vector.IsValueCreated && index >= 0 && index < this.vector.Value.Count) {
-                    return (T)this.vector.Value[index];
+                if (vector.IsValueCreated && index >= 0 && index < vector.Value.Count) {
+                    return (T)vector.Value[index];
                 }
 
                 return default(T);
             }
-            set {
-                this.vector.Value[index] = value;
-            }
+            set => vector.Value[index] = value;
         }
         #endregion
 
         #region IEnumerable
         public IEnumerator<T> GetEnumerator() {
-            if (this.vector.IsValueCreated)
+            if (vector.IsValueCreated) {
                 return Collection<T>.Empty.GetEnumerator();
+            }
 
             return Collection<T>.Empty.GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator() {
-            if (this.vector.IsValueCreated)
+            if (vector.IsValueCreated) {
                 return Collection<T>.Empty.GetEnumerator();
+            }
 
             return Collection<T>.Empty.GetEnumerator();
         }

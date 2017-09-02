@@ -5,11 +5,11 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.Common.Core.IO;
-using Microsoft.Common.Core.Settings;
+using Microsoft.Common.Core.Shell;
+using Microsoft.Common.Core.Test.Fakes.Shell;
 using Microsoft.UnitTests.Core.XUnit;
 using Microsoft.VisualStudio.R.Package.ProjectSystem;
 using Microsoft.VisualStudio.R.Package.ProjectSystem.Configuration;
-using Microsoft.VisualStudio.R.Package.Shell;
 using Microsoft.VisualStudio.R.Package.Sql.Publish;
 using NSubstitute;
 
@@ -19,13 +19,12 @@ namespace Microsoft.VisualStudio.R.Package.Test.Sql {
     public class PublishOptionsDialogTest {
         [Test(ThreadType.UI)]
         public async Task Constructor() {
-            var appShell = Substitute.For<IApplicationShell>();
+            var shell = TestCoreShell.CreateSubstitute();
             var pss = Substitute.For<IProjectSystemServices>();
             var pcsp = Substitute.For<IProjectConfigurationSettingsProvider>();
-            var storage = Substitute.For<IWritableSettingsStorage>();
-            var fs = Substitute.For<IFileSystem>();
+            var s = Substitute.For<ISettingsStorage>();
 
-            var dlg = await SqlPublshOptionsDialog.CreateAsync(appShell, pss, fs, pcsp);
+            var dlg = await SqlPublshOptionsDialog.CreateAsync(shell, pss, pcsp, s);
             dlg.Title.Should().Be(Resources.SqlPublishDialog_Title);
             dlg.DataContext.Should().BeOfType(typeof(SqlPublishOptionsDialogViewModel));
 

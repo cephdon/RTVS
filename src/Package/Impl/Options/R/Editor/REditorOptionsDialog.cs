@@ -3,15 +3,20 @@
 
 using System;
 using System.ComponentModel;
-using Microsoft.R.Editor.Settings;
+using Microsoft.Common.Core.Shell;
+using Microsoft.R.Editor;
 using Microsoft.VisualStudio.R.Package.Options.Attributes;
+using Microsoft.VisualStudio.R.Package.Shell;
 using Microsoft.VisualStudio.R.Package.Telemetry;
 using Microsoft.VisualStudio.Shell;
 
 namespace Microsoft.VisualStudio.R.Package.Options.R.Editor {
     public class REditorOptionsDialog : DialogPage {
+        private readonly IWritableREditorSettings _settings;
+
         public REditorOptionsDialog() {
-            this.SettingsRegistryPath = @"UserSettings\R_Tools";
+            SettingsRegistryPath = @"UserSettings\R_Tools";
+            _settings = VsAppShell.Current.GetService<IWritableREditorSettings>();
         }
 
         [LocCategory("Settings_SyntaxCheckCategory")]
@@ -20,8 +25,8 @@ namespace Microsoft.VisualStudio.R.Package.Options.R.Editor {
         [TypeConverter(typeof(OnOffTypeConverter))]
         [DefaultValue(true)]
         public bool EnableValidation {
-            get { return REditorSettings.SyntaxCheck; }
-            set { REditorSettings.SyntaxCheck = value; }
+            get => _settings.SyntaxCheckEnabled;
+            set => _settings.SyntaxCheckEnabled = value;
         }
 
         [LocCategory("Settings_IntellisenseCategory")]
@@ -30,8 +35,8 @@ namespace Microsoft.VisualStudio.R.Package.Options.R.Editor {
         [TypeConverter(typeof(OnOffTypeConverter))]
         [DefaultValue(false)]
         public bool CommitOnSpace {
-            get { return REditorSettings.CommitOnSpace; }
-            set { REditorSettings.CommitOnSpace = value; }
+            get => _settings.CommitOnSpace;
+            set => _settings.CommitOnSpace = value;
         }
 
         [LocCategory("Settings_IntellisenseCategory")]
@@ -40,8 +45,8 @@ namespace Microsoft.VisualStudio.R.Package.Options.R.Editor {
         [TypeConverter(typeof(OnOffTypeConverter))]
         [DefaultValue(false)]
         public bool CommitOnEnter {
-            get { return REditorSettings.CommitOnEnter; }
-            set { REditorSettings.CommitOnEnter = value; }
+            get => _settings.CommitOnEnter;
+            set => _settings.CommitOnEnter = value;
         }
 
         [LocCategory("Settings_IntellisenseCategory")]
@@ -50,8 +55,8 @@ namespace Microsoft.VisualStudio.R.Package.Options.R.Editor {
         [TypeConverter(typeof(OnOffTypeConverter))]
         [DefaultValue(true)]
         public bool TriggerOnFirstChar {
-            get { return REditorSettings.ShowCompletionOnFirstChar; }
-            set { REditorSettings.ShowCompletionOnFirstChar = value; }
+            get => _settings.ShowCompletionOnFirstChar;
+            set => _settings.ShowCompletionOnFirstChar = value;
         }
 
         [LocCategory("Settings_IntellisenseCategory")]
@@ -60,8 +65,8 @@ namespace Microsoft.VisualStudio.R.Package.Options.R.Editor {
         [TypeConverter(typeof(OnOffTypeConverter))]
         [DefaultValue(false)]
         public bool TriggerOnTab {
-            get { return REditorSettings.ShowCompletionOnTab; }
-            set { REditorSettings.ShowCompletionOnTab = value; }
+            get => _settings.ShowCompletionOnTab;
+            set => _settings.ShowCompletionOnTab = value;
         }
 
         [LocCategory("Settings_IntellisenseCategory")]
@@ -70,17 +75,18 @@ namespace Microsoft.VisualStudio.R.Package.Options.R.Editor {
         [TypeConverter(typeof(OnOffTypeConverter))]
         [DefaultValue(true)]
         public bool PartialArgumentNameMatch {
-            get { return REditorSettings.PartialArgumentNameMatch; }
-            set { REditorSettings.PartialArgumentNameMatch = value; }
+            get => _settings.PartialArgumentNameMatch;
+            set => _settings.PartialArgumentNameMatch = value;
         }
 
         [LocCategory("Settings_FormattingCategory")]
         [CustomLocDisplayName("Settings_BracesExpanded")]
         [LocDescription("Settings_BracesExpanded_Description")]
+        [TypeConverter(typeof(OnOffTypeConverter))]
         [DefaultValue(false)]
         public bool BracesOnNewLine {
-            get { return REditorSettings.FormatOptions.BracesOnNewLine; }
-            set { REditorSettings.FormatOptions.BracesOnNewLine = value; }
+            get => _settings.FormatOptions.BracesOnNewLine;
+            set => _settings.FormatOptions.BracesOnNewLine = value;
         }
 
         [LocCategory("Settings_FormattingCategory")]
@@ -89,8 +95,8 @@ namespace Microsoft.VisualStudio.R.Package.Options.R.Editor {
         [TypeConverter(typeof(OnOffTypeConverter))]
         [DefaultValue(true)]
         public bool SpaceAfterKeyword {
-            get { return REditorSettings.FormatOptions.SpaceAfterKeyword; }
-            set { REditorSettings.FormatOptions.SpaceAfterKeyword = value; }
+            get => _settings.FormatOptions.SpaceAfterKeyword;
+            set => _settings.FormatOptions.SpaceAfterKeyword = value;
         }
 
         [LocCategory("Settings_FormattingCategory")]
@@ -99,8 +105,28 @@ namespace Microsoft.VisualStudio.R.Package.Options.R.Editor {
         [TypeConverter(typeof(OnOffTypeConverter))]
         [DefaultValue(true)]
         public bool SpaceAfterComma {
-            get { return REditorSettings.FormatOptions.SpaceAfterComma; }
-            set { REditorSettings.FormatOptions.SpaceAfterComma = value; }
+            get => _settings.FormatOptions.SpaceAfterComma;
+            set => _settings.FormatOptions.SpaceAfterComma = value;
+        }
+
+        [LocCategory("Settings_FormattingCategory")]
+        [CustomLocDisplayName("Settings_SpaceBeforeCurly")]
+        [LocDescription("Settings_SpaceBeforeCurly_Description")]
+        [TypeConverter(typeof(OnOffTypeConverter))]
+        [DefaultValue(true)]
+        public bool SpaceBeforeCurly {
+            get => _settings.FormatOptions.SpaceBeforeCurly;
+            set => _settings.FormatOptions.SpaceBeforeCurly = value;
+        }
+
+        [LocCategory("Settings_FormattingCategory")]
+        [CustomLocDisplayName("Settings_SpacesAroundEquals")]
+        [LocDescription("Settings_SpacesAroundEquals_Description")]
+        [TypeConverter(typeof(OnOffTypeConverter))]
+        [DefaultValue(true)]
+        public bool SpacesAroundEquals {
+            get => _settings.FormatOptions.SpacesAroundEquals;
+            set => _settings.FormatOptions.SpacesAroundEquals = value;
         }
 
         [LocCategory("Settings_FormattingCategory")]
@@ -109,8 +135,8 @@ namespace Microsoft.VisualStudio.R.Package.Options.R.Editor {
         [TypeConverter(typeof(OnOffTypeConverter))]
         [DefaultValue(true)]
         public bool FormatOnPaste {
-            get { return REditorSettings.FormatOnPaste; }
-            set { REditorSettings.FormatOnPaste = value; }
+            get => _settings.FormatOnPaste;
+            set => _settings.FormatOnPaste = value;
         }
 
         [LocCategory("Settings_FormattingCategory")]
@@ -119,8 +145,8 @@ namespace Microsoft.VisualStudio.R.Package.Options.R.Editor {
         [TypeConverter(typeof(OnOffTypeConverter))]
         [DefaultValue(true)]
         public bool AutoFormat {
-            get { return REditorSettings.AutoFormat; }
-            set { REditorSettings.AutoFormat = value; }
+            get => _settings.AutoFormat;
+            set => _settings.AutoFormat = value;
         }
 
         [LocCategory("Settings_FormattingCategory")]
@@ -129,8 +155,28 @@ namespace Microsoft.VisualStudio.R.Package.Options.R.Editor {
         [TypeConverter(typeof(OnOffTypeConverter))]
         [DefaultValue(true)]
         public bool FormatScope {
-            get { return REditorSettings.FormatScope; }
-            set { REditorSettings.FormatScope = value; }
+            get => _settings.FormatScope;
+            set => _settings.FormatScope = value;
+        }
+
+        [LocCategory("Settings_FormattingCategory")]
+        [CustomLocDisplayName("Settings_BreakMultipleStatements")]
+        [LocDescription("Settings_BreakMultipleStatements_Description")]
+        [TypeConverter(typeof(OnOffTypeConverter))]
+        [DefaultValue(true)]
+        public bool BreakMultipleStatements {
+            get => _settings.FormatOptions.BreakMultipleStatements;
+            set => _settings.FormatOptions.BreakMultipleStatements = value;
+        }
+
+        [LocCategory("Settings_SmartIndentCategory")]
+        [CustomLocDisplayName("Settings_SmartIndentByArgument")]
+        [LocDescription("Settings_Settings_SmartIndentByArgument_Description")]
+        [TypeConverter(typeof(OnOffTypeConverter))]
+        [DefaultValue(true)]
+        public bool SmartIndentByArgument {
+            get => _settings.SmartIndentByArgument;
+            set => _settings.SmartIndentByArgument = value;
         }
 
         [LocCategory("Settings_ReplCategory")]
@@ -139,12 +185,23 @@ namespace Microsoft.VisualStudio.R.Package.Options.R.Editor {
         [TypeConverter(typeof(OnOffTypeConverter))]
         [DefaultValue(false)]
         public bool SyntaxCheckInRepl {
-            get { return REditorSettings.SyntaxCheckInRepl; }
-            set { REditorSettings.SyntaxCheckInRepl = value; }
+            get => _settings.SyntaxCheckInRepl;
+            set => _settings.SyntaxCheckInRepl = value;
+        }
+
+        [LocCategory("Settings_OutliningCategory")]
+        [CustomLocDisplayName("Setting_EnableOutlining")]
+        [LocDescription("Setting_EnableOutlining_Description")]
+        [TypeConverter(typeof(OnOffTypeConverter))]
+        [DefaultValue(true)]
+        public bool EnableOutlining
+        {
+            get => _settings.EnableOutlining;
+            set => _settings.EnableOutlining = value;
         }
 
         public override void ResetSettings() {
-            REditorSettings.ResetSettings();
+            _settings.ResetSettings();
             base.ResetSettings();
         }
 
@@ -155,8 +212,6 @@ namespace Microsoft.VisualStudio.R.Package.Options.R.Editor {
             base.OnApply(e);
         }
 
-        protected override void OnClosed(EventArgs e) {
-            base.OnClosed(e);
-        }
+        protected override void OnClosed(EventArgs e) => base.OnClosed(e);
     }
 }

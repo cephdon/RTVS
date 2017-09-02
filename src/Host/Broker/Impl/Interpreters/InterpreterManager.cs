@@ -3,37 +3,37 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.Composition;
 using System.Linq;
 using System.Text;
+using Microsoft.Common.Core;
 using Microsoft.Common.Core.IO;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.R.Interpreters;
+using static System.FormattableString;
 
 namespace Microsoft.R.Host.Broker.Interpreters {
     public class InterpreterManager {
-        private const string _localId = "local";
-
         private readonly ROptions _options;
         private readonly ILogger _logger;
-        private IFileSystem _fs;
+        private readonly IFileSystem _fs;
+        private readonly IRInstallationService _installationService;
 
         public IReadOnlyCollection<Interpreter> Interpreters { get; private set; }
 
-        [ImportingConstructor]
-        public InterpreterManager(IOptions<ROptions> options, ILogger<InterpreterManager> logger, IFileSystem fs) {
+        public InterpreterManager(IFileSystem fs, IRInstallationService installationService, IOptions<ROptions> options, ILogger<InterpreterManager> logger) {
             _options = options.Value;
             _logger = logger;
             _fs = fs;
+            _installationService = installationService;
         }
 
         public void Initialize() {
             Interpreters = GetInterpreters().ToArray();
 
-            var sb = new StringBuilder($"{Interpreters.Count} interpreters configured:");
+            var sb = new StringBuilder(Invariant($"{Interpreters.Count} interpreters configured:"));
             foreach (var interp in Interpreters) {
-                sb.Append(Environment.NewLine + $"'{interp.Id}': {interp.Version} at \"{interp.Path}\"");
+                sb.Append(Environment.NewLine + Invariant($"[{interp.Id}] : {interp.Name} at \"{interp.Path}\""));
             }
             _logger.LogInformation(sb.ToString());
         }
@@ -42,10 +42,11 @@ namespace Microsoft.R.Host.Broker.Interpreters {
             if (_options.AutoDetect) {
                 _logger.LogTrace(Resources.Trace_AutoDetectingR);
 
-                var engines = new RInstallation().GetCompatibleEngines();
+                var engines = _installationService.GetCompatibleEngines().AsList();
                 if (engines.Any()) {
+                    var interpreterId = 0;
                     foreach (var e in engines) {
-                        var detected = new Interpreter(this, Guid.NewGuid().ToString(), e.Name, e.InstallPath, e.BinPath, e.Version);
+                        var detected = new Interpreter(this, Invariant($"{interpreterId++}"), e);
                         _logger.LogTrace(Resources.Trace_DetectedR, detected.Version, detected.Path);
                         yield return detected;
                     }
@@ -59,14 +60,14 @@ namespace Microsoft.R.Host.Broker.Interpreters {
                 InterpreterOptions options = kv.Value;
 
                 if (!string.IsNullOrEmpty(options.BasePath) && _fs.DirectoryExists(options.BasePath)) {
-                    var interpInfo = new RInterpreterInfo(string.Empty, options.BasePath);
-                    if (interpInfo.VerifyInstallation()) {
-                        yield return new Interpreter(this, id, options.Name, interpInfo.InstallPath, interpInfo.BinPath, interpInfo.Version);
+                    var interpInfo = _installationService.CreateInfo(string.Empty, options.BasePath);
+                    if (interpInfo != null && interpInfo.VerifyInstallation()) {
+                        yield return new Interpreter(this, id, options.Name, interpInfo);
                         continue;
                     }
                 }
 
-                _logger.LogError(Resources.Error_FailedRInstallationData, id, options.BasePath);
+                _logger.LogError(Resources.Error_FailedRInstallationData, options.Name ?? id, options.BasePath);
             }
         }
     }

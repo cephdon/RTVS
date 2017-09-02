@@ -1,78 +1,91 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
-using System;
-using System.ComponentModel.Composition;
-using System.ComponentModel.Composition.Hosting;
-using System.ComponentModel.Design;
 using System.Diagnostics.CodeAnalysis;
-using System.Threading;
-using System.Threading.Tasks;
+using Microsoft.Common.Core.IO;
+using Microsoft.Common.Core.Logging;
+using Microsoft.Common.Core.OS;
+using Microsoft.Common.Core.Security;
 using Microsoft.Common.Core.Services;
-using Microsoft.Common.Core.Settings;
 using Microsoft.Common.Core.Shell;
-using Microsoft.Common.Core.Threading;
+using Microsoft.Common.Core.Tasks;
+using Microsoft.Common.Core.Test.Stubs.Shell;
+using Microsoft.Common.Core.UI;
 using Microsoft.UnitTests.Core.Threading;
 using NSubstitute;
 
 namespace Microsoft.Common.Core.Test.Fakes.Shell {
     [ExcludeFromCodeCoverage]
-    public class TestCoreShell : ICoreShell, IMainThread {
-        private readonly CompositionContainer _container;
+    public class TestCoreShell : ICoreShell {
+        public IServiceManager ServiceManager { get; }
 
-        public TestCoreShell(CompositionContainer container) {
-            _container = container;
+        public TestCoreShell(IServiceManager serviceManager) {
+             ServiceManager = serviceManager;
         }
 
-        public ExportProvider ExportProvider => _container;
-        public ICompositionService CompositionService => _container;
+        /// <summary>
+        /// Creates an empty shell. Caller can add services as needed.
+        /// </summary>
+        public static TestCoreShell CreateEmpty() => new TestCoreShell(new ServiceManager());
 
-        public void DispatchOnUIThread(Action action) {
-            UIThreadHelper.Instance.InvokeAsync(action).DoNotWait();
+        /// <summary>
+        /// Creates shell with a set of basic functional services. 
+        /// </summary>
+        public static TestCoreShell CreateBasic() {
+            var shell = new TestCoreShell(new ServiceManager());
+            shell.AddBasicServices();
+            return shell;
         }
 
-        public Task<TResult> DispatchOnMainThreadAsync<TResult>(Func<TResult> callback, CancellationToken cancellationToken = default(CancellationToken)) {
-            return UIThreadHelper.Instance.InvokeAsync(callback);
+        /// <summary>
+        /// Creates shell with a set of basic services which are substitutes 
+        /// </summary>
+        public static TestCoreShell CreateSubstitute() {
+            var shell = new TestCoreShell(new ServiceManager());
+            shell.AddSubstiteServices();
+            return shell;
         }
 
-        public Thread MainThread => UIThreadHelper.Instance.Thread;
-
-#pragma warning disable 67
-        public event EventHandler<EventArgs> Idle;
-        public event EventHandler<EventArgs> Terminating;
-
-        public void ShowErrorMessage(string message) {
-            LastShownErrorMessage = message;
+        private void AddSubstiteServices() {
+            ServiceManager
+                .AddService(this)
+                .AddService(UIThreadHelper.Instance.MainThread)
+                .AddService(Substitute.For<IActionLog>())
+                .AddService(Substitute.For<ISecurityService>())
+                .AddService(Substitute.For<ILoggingPermissions>())
+                .AddService(Substitute.For<IFileSystem>())
+                .AddService(Substitute.For<IRegistry>())
+                .AddService(Substitute.For<IProcessServices>())
+                .AddService(Substitute.For<ITaskService>())
+                .AddService(Substitute.For<IUIService>())
+                .AddService(Substitute.For<IPlatformServices>())
+                .AddService(Substitute.For<IApplication>())
+                .AddService(Substitute.For<IIdleTimeService>())
+                .AddService(Substitute.For<IIdleTimeSource>());
         }
 
-        public void ShowContextMenu(CommandID commandId, int x, int y, object commandTaget = null) => LastShownContextMenu = commandId;
-
-        public MessageButtons ShowMessage(string message, MessageButtons buttons, MessageType messageType = MessageType.Information) {
-            LastShownMessage = message;
-            if (buttons == MessageButtons.YesNo || buttons == MessageButtons.YesNoCancel) {
-                return MessageButtons.Yes;
-            }
-            return MessageButtons.OK;
+        private void AddBasicServices(IActionLog log = null
+            , ILoggingPermissions loggingPermissions = null
+            , IFileSystem fs = null
+            , IRegistry registry = null
+            , IProcessServices ps = null) {
+            ServiceManager
+                .AddService(this)
+                .AddService(UIThreadHelper.Instance.MainThread)
+                .AddService(log ?? Substitute.For<IActionLog>())
+                .AddService(new SecurityServiceStub())
+                .AddService(loggingPermissions ?? Substitute.For<ILoggingPermissions>())
+                .AddService(fs ?? new WindowsFileSystem())
+                .AddService(registry ?? new RegistryImpl())
+                .AddService(ps ?? new ProcessServices())
+                .AddService(new TestTaskService())
+                .AddService(new TestUIServices(UIThreadHelper.Instance.ProgressDialog))
+                .AddService(new TestImageService())
+                .AddService(new TestPlatformServices())
+                .AddService(new TestApplication())
+                .AddService(new TestIdleTimeService());
         }
 
-        public string SaveFileIfDirty(string fullPath) => fullPath;
-
-        public void UpdateCommandStatus(bool immediate) { }
-
-        public int LocaleId => 1033;
-        public string LastShownMessage { get; private set; }
-        public string LastShownErrorMessage { get; private set; }
-        public CommandID LastShownContextMenu { get; private set; }
-        public bool IsUnitTestEnvironment => true;
-        public IFileDialog FileDialog { get; } = new TestFileDialog();
-        public IProgressDialog ProgressDialog { get; } = new TestProgressDialog();
-        public IApplicationConstants AppConstants => new TestAppConstants();
-        public ICoreServices Services => TestCoreServices.CreateReal();
-        public IWritableSettingsStorage SettingsStorage => Substitute.For<IWritableSettingsStorage>();
-
-        #region IMainThread
-        public int ThreadId => MainThread.ManagedThreadId;
-        public void Post(Action action) => UIThreadHelper.Instance.InvokeAsync(action).DoNotWait();
-        #endregion
+        public IServiceContainer Services => ServiceManager;
     }
 }

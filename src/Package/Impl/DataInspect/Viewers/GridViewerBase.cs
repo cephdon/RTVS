@@ -2,14 +2,17 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
+using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
-using EnvDTE;
-using Microsoft.Common.Core.Shell;
+using Microsoft.Common.Core.Services;
+using Microsoft.Common.Core.Threading;
 using Microsoft.R.DataInspection;
-using Microsoft.VisualStudio.R.Package.Shell;
+using Microsoft.R.Editor.Data;
 using Microsoft.VisualStudio.R.Package.Utilities;
 using Microsoft.VisualStudio.Shell.Interop;
 using static Microsoft.R.DataInspection.REvaluationResultProperties;
+using static System.FormattableString;
 
 namespace Microsoft.VisualStudio.R.Package.DataInspect.Viewers {
     internal abstract class GridViewerBase : ViewerBase, IObjectDetailsViewer {
@@ -17,35 +20,31 @@ namespace Microsoft.VisualStudio.R.Package.DataInspect.Viewers {
         private const REvaluationResultProperties _properties =
            ClassesProperty | ExpressionProperty | TypeNameProperty | DimProperty | LengthProperty;
 
-        private static Window _lastCreatedGridPane;
-        private static Window _linkedWindowFrame;
-        private readonly IObjectDetailsViewerAggregator _aggregator;
-
-        public GridViewerBase(IObjectDetailsViewerAggregator aggregator, IDataObjectEvaluator evaluator) :
-            base(evaluator) {
-            _aggregator = aggregator;
-        }
+        protected GridViewerBase(IServiceContainer services, IDataObjectEvaluator evaluator) : 
+            base(services, evaluator) { }
 
         #region IObjectDetailsViewer
         public ViewerCapabilities Capabilities => ViewerCapabilities.List | ViewerCapabilities.Table;
 
-        abstract public bool CanView(IRValueInfo evaluation);
+        public abstract bool CanView(IRValueInfo evaluation);
 
-        public async Task ViewAsync(string expression, string title) {
-            var evaluation = await EvaluateAsync(expression, _properties, RValueRepresentations.Str()) as IRValueInfo;
+        public async Task ViewAsync(string expression, string title, CancellationToken cancellationToken = default(CancellationToken)) {
+            var evaluation = await EvaluateAsync(expression, _properties, RValueRepresentations.Str(), cancellationToken);
             if (evaluation != null) {
-                await VsAppShell.Current.SwitchToMainThreadAsync();
+                await Services.MainThread().SwitchToAsync(cancellationToken);
                 var id = Math.Abs(_toolWindowIdBase + expression.GetHashCode() % (Int32.MaxValue - _toolWindowIdBase));
 
-                var existingPane = ToolWindowUtilities.FindWindowPane<VariableGridWindowPane>(id);
-                var frame = existingPane?.Frame as IVsWindowFrame;
-                if (frame != null) {
-                    frame.Show();
+                var pane = ToolWindowUtilities.FindWindowPane<VariableGridWindowPane>(id);
+                if (pane == null) {
+                    pane = ToolWindowUtilities.ShowWindowPane<VariableGridWindowPane>(id, true);
                 } else {
-                    VariableGridWindowPane pane = ToolWindowUtilities.ShowWindowPane<VariableGridWindowPane>(id, true);
-                    title = !string.IsNullOrEmpty(title) ? title : evaluation.Expression;
-                    pane.SetEvaluation(new VariableViewModel(evaluation, _aggregator), title);
+                    var frame = pane.Frame as IVsWindowFrame;
+                    Debug.Assert(frame != null);
+                    frame?.Show();
                 }
+
+                title = !string.IsNullOrEmpty(title) ? title : expression;
+                pane.SetViewModel(new RSessionDataObject(evaluation, false), title);
             }
         }
         #endregion

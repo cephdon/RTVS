@@ -117,48 +117,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="ColorName_R_Assignment" xml:space="preserve">
-    <value>R Assignment</value>
-  </data>
-  <data name="ColorName_R_Braces" xml:space="preserve">
-    <value>R Braces</value>
-  </data>
-  <data name="ColorName_R_Brackets" xml:space="preserve">
-    <value>R Square Brackets</value>
-  </data>
-  <data name="ColorName_R_Builtin" xml:space="preserve">
-    <value>R Builtin Function</value>
-  </data>
-  <data name="ColorName_R_Comment" xml:space="preserve">
-    <value>R Comment</value>
-  </data>
-  <data name="ColorName_R_CurlyBrace" xml:space="preserve">
-    <value>R Curly Brace</value>
-  </data>
-  <data name="ColorName_R_CurlyBraces" xml:space="preserve">
-    <value>R Curly Braces</value>
-  </data>
-  <data name="ColorName_R_FunctionDefaultParameter" xml:space="preserve">
-    <value>R Function Default Parameter</value>
-  </data>
-  <data name="ColorName_R_FunctionReference" xml:space="preserve">
-    <value>R Function Reference</value>
-  </data>
-  <data name="ColorName_R_Keyword" xml:space="preserve">
-    <value>R Keyword</value>
-  </data>
-  <data name="ColorName_R_Number" xml:space="preserve">
-    <value>R Number</value>
-  </data>
-  <data name="ColorName_R_Operator" xml:space="preserve">
-    <value>R Operator</value>
-  </data>
-  <data name="ColorName_R_Punctuation" xml:space="preserve">
-    <value>R Punctuation</value>
-  </data>
-  <data name="ColorName_R_String" xml:space="preserve">
-    <value>R String</value>
-  </data>
   <data name="ParseError_CloseBraceExpected" xml:space="preserve">
     <value>) expected</value>
   </data>
@@ -216,11 +174,11 @@
   <data name="ParseError_FunctionBodyExpected" xml:space="preserve">
     <value>Function body expected</value>
   </data>
-  <data name="ColorName_R_TypeFunction" xml:space="preserve">
-    <value>R Type Functions</value>
+  <data name="ParseError_RightOperandExpected" xml:space="preserve">
+    <value>Operand to the right expected</value>
   </data>
-  <data name="FormatDocument" xml:space="preserve">
-    <value>Format document</value>
+  <data name="AutoFormat" xml:space="preserve">
+    <value>Automatic formatting</value>
   </data>
   <data name="CommentSelection" xml:space="preserve">
     <value>Comment selection</value>
@@ -228,25 +186,76 @@
   <data name="UncommentSelection" xml:space="preserve">
     <value>Uncomment selection</value>
   </data>
-  <data name="AutoFormat" xml:space="preserve">
-    <value>Automatic formatting</value>
+  <data name="Lint_Assignment" xml:space="preserve">
+    <value>’&lt;-’ should always be used for assignment</value>
   </data>
-  <data name="ParseError_RightOperandExpected" xml:space="preserve">
-    <value>Operand to the right expected</value>
+  <data name="Lint_CamelCase" xml:space="preserve">
+    <value>Objects names should not be in camelCase</value>
   </data>
-  <data name="AsyncIntellisense" xml:space="preserve">
-    <value>Parsing document...</value>
+  <data name="Lint_CommaSpaces" xml:space="preserve">
+    <value>Comma should be followed by space, but should not have space before it</value>
   </data>
-  <data name="SmartTagName_InstallPackage" xml:space="preserve">
-    <value>Install package</value>
+  <data name="Lint_MultileDots" xml:space="preserve">
+    <value>Objects names should not have.multiple.dots</value>
   </data>
-  <data name="SmartTagName_LoadLibrary" xml:space="preserve">
-    <value>Load library</value>
+  <data name="Lint_NameTooLong" xml:space="preserve">
+    <value>Objects name is {0} characters long. Max {1} characters is recommended.</value>
   </data>
-  <data name="ReplWindowName" xml:space="preserve">
-    <value>Interactive Window</value>
+  <data name="Lint_OpenCurlyPosition" xml:space="preserve">
+    <value>Opening curly brace must not be on its own line and should always be followed by a newline</value>
   </data>
-  <data name="DragDropOperation" xml:space="preserve">
-    <value>Drag/drop</value>
+  <data name="Lint_OperatorSpaces" xml:space="preserve">
+    <value>Infix operators should have spaces around them.</value>
+  </data>
+  <data name="Lint_DoubleQuotes" xml:space="preserve">
+    <value>Only double quotes should used to delimit strings.</value>
+  </data>
+  <data name="Lint_SnakeCase" xml:space="preserve">
+    <value>Object names should not be in snake_case.</value>
+  </data>
+  <data name="Lint_Tabs" xml:space="preserve">
+    <value>Files should not contain tabs</value>
+  </data>
+  <data name="Lint_TrailingWhitespace" xml:space="preserve">
+    <value>Lines should not contain trailing whitespace characters.</value>
+  </data>
+  <data name="Lint_CloseCurlySeparateLine" xml:space="preserve">
+    <value>Closing curly brace should be on its own line unless it is followed by an 'else'</value>
+  </data>
+  <data name="Lint_SpaceBeforeOpenBrace" xml:space="preserve">
+    <value>Opening brace should have a space before it unless it is in a function call</value>
+  </data>
+  <data name="Lint_LineTooLong" xml:space="preserve">
+    <value>Line is {0} characters long. Max {1} characters is recommended.</value>
+  </data>
+  <data name="Lint_TrailingBlankLines" xml:space="preserve">
+    <value>There should not be trailing blank lines in the file.</value>
+  </data>
+  <data name="Lint_MultipleStatementsInLine" xml:space="preserve">
+    <value>Multiple statements in line</value>
+  </data>
+  <data name="Lint_NoSpaceBetweenCommaAndClosingBracket" xml:space="preserve">
+    <value>Insert space between ] or ]] and the preceding comma</value>
+  </data>
+  <data name="Lint_PascalCase" xml:space="preserve">
+    <value>Objects names should not be in PascalCase</value>
+  </data>
+  <data name="Lint_Semicolons" xml:space="preserve">
+    <value>Use of semicolons is not recommended</value>
+  </data>
+  <data name="Lint_SpaceAfterFunctionName" xml:space="preserve">
+    <value>There should not be spaces between function name and opening brace.</value>
+  </data>
+  <data name="Lint_SpaceAfterLeftParenthesis" xml:space="preserve">
+    <value>There should not be spaces after (, [ or [[</value>
+  </data>
+  <data name="Lint_SpaceBeforeClosingBrace" xml:space="preserve">
+    <value>There should not be spaces before )</value>
+  </data>
+  <data name="Lint_Uppercase" xml:space="preserve">
+    <value>Objects names should not be in all uppercase</value>
+  </data>
+  <data name="Lint_TrueFalseNames" xml:space="preserve">
+    <value>Use TRUE and FALSE rather than T and F</value>
   </data>
 </root>

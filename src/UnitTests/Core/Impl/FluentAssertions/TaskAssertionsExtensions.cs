@@ -10,5 +10,9 @@ namespace Microsoft.UnitTests.Core.FluentAssertions {
         public static TaskAssertions Should(this Task task) {
             return new TaskAssertions(task);
         }
+
+        public static TaskAssertions<TResult> Should<TResult>(this Task<TResult> task) {
+            return new TaskAssertions<TResult>(task);
+        }
     }
 }

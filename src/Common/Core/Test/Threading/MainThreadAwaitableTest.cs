@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -10,11 +11,12 @@ using Microsoft.UnitTests.Core.Threading;
 using Microsoft.UnitTests.Core.XUnit;
 
 namespace Microsoft.Common.Core.Test.Threading {
+    [ExcludeFromCodeCoverage]
     public class MainThreadAwaitableTest {
         private readonly IMainThread _mainThread;
 
         public MainThreadAwaitableTest() {
-            _mainThread = new TestMainThread(UIThreadHelper.Instance);
+            _mainThread = UIThreadHelper.Instance.MainThread;
         }
 
         [Test]
@@ -57,21 +59,12 @@ namespace Microsoft.Common.Core.Test.Threading {
 
         [Test]
         public void GetResult_ThrowOnBackgroundThread() {
-            var awaitable = new MainThreadAwaitable(_mainThread);
+            var cts = new CancellationTokenSource();
+            var awaitable = new MainThreadAwaitable(_mainThread, cts.Token);
+            cts.Cancel();
 
             Action a = () => awaitable.GetAwaiter().GetResult();
-            a.ShouldThrow<InvalidOperationException>();
-        }
-        
-        private sealed class TestMainThread : IMainThread {
-            private readonly UIThreadHelper _threadHelper;
-
-            public TestMainThread(UIThreadHelper threadHelper) {
-                _threadHelper = threadHelper;
-            }
-
-            public int ThreadId => _threadHelper.Thread.ManagedThreadId;
-            public void Post(Action action) => _threadHelper.InvokeAsync(action).DoNotWait();
+            a.ShouldThrow<OperationCanceledException>();
         }
     }
 }

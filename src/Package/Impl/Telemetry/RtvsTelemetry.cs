@@ -7,27 +7,29 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using Microsoft.Common.Core;
+using Microsoft.Common.Core.Services;
 using Microsoft.Common.Core.Telemetry;
+using Microsoft.Markdown.Editor.Settings;
 using Microsoft.R.Components.Settings;
-using Microsoft.R.Editor.Settings;
+using Microsoft.R.Editor;
+using Microsoft.R.Editor.Functions;
 using Microsoft.R.Interpreters;
-using Microsoft.R.Support.Help;
-using Microsoft.R.Support.Settings;
-using Microsoft.VisualStudio.R.Package.Shell;
 using Microsoft.VisualStudio.R.Package.Telemetry.Data;
 using Microsoft.VisualStudio.R.Package.Telemetry.Definitions;
 using Microsoft.VisualStudio.R.Package.Telemetry.Windows;
 using Microsoft.VisualStudio.Shell.Interop;
+using Microsoft.VisualStudio.Telemetry;
 
 namespace Microsoft.VisualStudio.R.Package.Telemetry {
     /// <summary>
     /// Represents telemetry operations in RTVS
     /// </summary>
     internal sealed class RtvsTelemetry : IRtvsTelemetry {
-        private ToolWindowTracker _toolWindowTracker = new ToolWindowTracker();
+        private ToolWindowTracker _toolWindowTracker;
         private readonly IPackageIndex _packageIndex;
-        private static IRSettings _settings;
+        private readonly IRSettings _settings;
+        private readonly IREditorSettings _editorSettings;
+        private readonly IRMarkdownEditorSettings _markdownSettings;
 
         public static IRtvsTelemetry Current { get; set; }
 
@@ -45,6 +47,7 @@ namespace Microsoft.VisualStudio.R.Package.Telemetry {
             public const string RClientDownloadFailed = "MRC Download Failed";
             public const string LocalConnection = "Local Connection";
             public const string RemoteConnection = "Remote Connection";
+            public const string ContainerConnection = "Container Connection";
         }
 
         internal class SettingEvents {
@@ -55,16 +58,28 @@ namespace Microsoft.VisualStudio.R.Package.Telemetry {
             public const string ToolWindow = "Tool Window";
         }
 
-        public static void Initialize(IPackageIndex packageIndex, IRSettings settings, ITelemetryService service = null) {
+        public static void Initialize(IPackageIndex packageIndex, IServiceContainer services) {
             if (Current == null) {
-                Current = new RtvsTelemetry(packageIndex, settings, service);
+                var settings = services.GetService<IRSettings>();
+                var editorSettings = services.GetService<IREditorSettings>();
+                var markdownSettings = services.GetService<IRMarkdownEditorSettings>();
+                var telemetryService = services.GetService<ITelemetryService>();
+                Current = new RtvsTelemetry(packageIndex, settings, editorSettings, markdownSettings, telemetryService, new ToolWindowTracker(services));
             }
         }
 
-        public RtvsTelemetry(IPackageIndex packageIndex, IRSettings settings, ITelemetryService service = null) {
+        public RtvsTelemetry(IPackageIndex packageIndex
+            , IRSettings settings
+            , IREditorSettings editorSettings
+            , IRMarkdownEditorSettings markdownSettings
+            , ITelemetryService telemetryService = null
+            , ToolWindowTracker toolWindowTracker = null) {
             _packageIndex = packageIndex;
             _settings = settings;
-            TelemetryService = service ?? VsAppShell.Current.ExportProvider.GetExportedValue<ITelemetryService>();
+            _editorSettings = editorSettings;
+            _markdownSettings = markdownSettings;
+            TelemetryService = telemetryService;
+            _toolWindowTracker = toolWindowTracker;
         }
 
         public ITelemetryService TelemetryService { get; }
@@ -72,7 +87,7 @@ namespace Microsoft.VisualStudio.R.Package.Telemetry {
         public void ReportConfiguration() {
             if (TelemetryService.IsEnabled) {
                 try {
-                    Assembly thisAssembly = Assembly.GetExecutingAssembly();
+                    var thisAssembly = Assembly.GetExecutingAssembly();
                     TelemetryService.ReportEvent(TelemetryArea.Configuration, ConfigurationEvents.RtvsVersion, thisAssembly.GetName().Version.ToString());
 
                     ReportLocalRConfiguration();
@@ -91,7 +106,7 @@ namespace Microsoft.VisualStudio.R.Package.Telemetry {
                 TelemetryService.ReportEvent(TelemetryArea.Configuration, ConfigurationEvents.RInstallPath, e.InstallPath);
             }
 
-            string rClientPath = SqlRClientInstallation.GetRClientPath();
+            var rClientPath = SqlRClientInstallation.GetRClientPath();
             if (rClientPath != null) {
                 TelemetryService.ReportEvent(TelemetryArea.Configuration, ConfigurationEvents.RClientFound);
             }
@@ -112,22 +127,24 @@ namespace Microsoft.VisualStudio.R.Package.Telemetry {
             }
 
             if (_packageIndex != null) {
-                foreach(var p in _packageIndex.Packages) {
-                    TelemetryService.ReportEvent(TelemetryArea.Configuration, ConfigurationEvents.RPackages, p.Name.GetMD5Hash());
+                foreach (var p in _packageIndex.Packages) {
+                    TelemetryService.ReportEvent(TelemetryArea.Configuration, ConfigurationEvents.RPackages, new TelemetryPiiProperty(p.Name));
                 }
             }
         }
 
         private void ReportConnectionsConfiguration() {
             var connections = _settings.Connections;
-            if(connections != null) {
+            if (connections != null) {
                 foreach (var c in connections) {
-                    Uri uri;
-                    if (Uri.TryCreate(c.Path, UriKind.Absolute, out uri)) {
+                    if (Uri.TryCreate(c.Path, UriKind.Absolute, out Uri uri)) {
                         if (uri.IsFile) {
-                            TelemetryService.ReportEvent(TelemetryArea.Configuration, ConfigurationEvents.LocalConnection, uri.ToString());
+                            // Do not report local since they are reported via installed R
+                            // TelemetryService.ReportEvent(TelemetryArea.Configuration, ConfigurationEvents.LocalConnection, uri.ToString());
+                        } else if (uri.IsLoopback) {
+                            TelemetryService.ReportEvent(TelemetryArea.Configuration, ConfigurationEvents.ContainerConnection, uri.ToString());
                         } else {
-                            TelemetryService.ReportEvent(TelemetryArea.Configuration, ConfigurationEvents.RemoteConnection, uri.ToString().GetMD5Hash());
+                            TelemetryService.ReportEvent(TelemetryArea.Configuration, ConfigurationEvents.RemoteConnection, new TelemetryPiiProperty(uri.ToString()));
                         }
                     }
                 }
@@ -139,23 +156,69 @@ namespace Microsoft.VisualStudio.R.Package.Telemetry {
                 try {
                     TelemetryService.ReportEvent(TelemetryArea.Configuration, SettingEvents.Settings,
                             new {
-                                Cran = RToolsSettings.Current.CranMirror,
-                                Locale = RToolsSettings.Current.RCodePage,
-                                LoadRData = RToolsSettings.Current.LoadRDataOnProjectLoad,
-                                SaveRData = RToolsSettings.Current.SaveRDataOnProjectUnload,
-                                MultilineHistorySelection = RToolsSettings.Current.MultilineHistorySelection,
-                                AlwaysSaveHistory = RToolsSettings.Current.AlwaysSaveHistory,
-                                AutoFormat = REditorSettings.AutoFormat,
-                                CommitOnEnter = REditorSettings.CommitOnEnter,
-                                CommitOnSpace = REditorSettings.CommitOnSpace,
-                                FormatOnPaste = REditorSettings.FormatOnPaste,
-                                SendToReplOnCtrlEnter = REditorSettings.SendToReplOnCtrlEnter,
-                                ShowCompletionOnFirstChar = REditorSettings.ShowCompletionOnFirstChar,
-                                SignatureHelpEnabled = REditorSettings.SignatureHelpEnabled,
-                                CompletionEnabled = REditorSettings.CompletionEnabled,
-                                SyntaxCheckInRepl = REditorSettings.SyntaxCheckInRepl,
-                                PartialArgumentNameMatch = REditorSettings.PartialArgumentNameMatch,
-                                RCommandLineArguments = RToolsSettings.Current.LastActiveConnection.RCommandLineArguments
+                                Cran = _settings.CranMirror,
+                                Locale = _settings.RCodePage,
+                                LoadRData = _settings.LoadRDataOnProjectLoad,
+                                SaveRData = _settings.SaveRDataOnProjectUnload,
+                                MultilineHistorySelection = _settings.MultilineHistorySelection,
+                                AlwaysSaveHistory = _settings.AlwaysSaveHistory,
+                                // R Editor
+                                AutoFormat = _editorSettings.AutoFormat,
+                                CommitOnEnter = _editorSettings.CommitOnEnter,
+                                CommitOnSpace = _editorSettings.CommitOnSpace,
+                                FormatOnPaste = _editorSettings.FormatOnPaste,
+                                ShowCompletionOnFirstChar = _editorSettings.ShowCompletionOnFirstChar,
+                                SignatureHelpEnabled = _editorSettings.SignatureHelpEnabled,
+                                CompletionEnabled = _editorSettings.CompletionEnabled,
+                                SyntaxCheckInRepl = _editorSettings.SyntaxCheckInRepl,
+                                PartialArgumentNameMatch = _editorSettings.PartialArgumentNameMatch,
+
+                                // Do not report command line arguments - they may contain 
+                                // PII information and they are not that interesting anyway.
+
+                                // R Linter
+                                LinterEnabled = _editorSettings.LintOptions.Enabled,
+                                LinterCamelCase = _editorSettings.LintOptions.CamelCase,
+                                LinterPascalCase = _editorSettings.LintOptions.PascalCase,
+                                LinterSnakeCase = _editorSettings.LintOptions.SnakeCase,
+                                LinterUpperCase = _editorSettings.LintOptions.UpperCase,
+                                LinterSemicolons = _editorSettings.LintOptions.Semicolons,
+                                LinterMultipleDots = _editorSettings.LintOptions.MultipleDots,
+                                LinterMultipleStatements = _editorSettings.LintOptions.MultipleStatements,
+                                LinterNameLength = _editorSettings.LintOptions.NameLength,
+                                LinterMaxNameLength = _editorSettings.LintOptions.MaxNameLength,
+                                LinterAssignmentType = _editorSettings.LintOptions.AssignmentType,
+                                LinterSpaceAroundComma = _editorSettings.LintOptions.SpacesAroundComma,
+                                LinterSpaceBeforeOpenBrace = _editorSettings.LintOptions.SpaceBeforeOpenBrace,
+                                LinterSpacesAroundOperators = _editorSettings.LintOptions.SpacesAroundOperators,
+                                LinterSpacesInsideParenthesis = _editorSettings.LintOptions.SpacesInsideParenthesis,
+                                LinterCloseCurlySeparateLine = _editorSettings.LintOptions.CloseCurlySeparateLine,
+                                LinterNoSpaceAfterFunctionName = _editorSettings.LintOptions.NoSpaceAfterFunctionName,
+                                LinterOpenCurlyPosition = _editorSettings.LintOptions.OpenCurlyPosition,
+                                LinterNoTabs = _editorSettings.LintOptions.NoTabs,
+                                LinterTrailingWhitespace = _editorSettings.LintOptions.TrailingWhitespace,
+                                LinterTrailingBlankLines = _editorSettings.LintOptions.TrailingBlankLines,
+                                LinterDoubleQuotes = _editorSettings.LintOptions.DoubleQuotes,
+                                LinterLineLength = _editorSettings.LintOptions.LineLength,
+                                LinterMaxLineLength = _editorSettings.LintOptions.MaxLineLength,
+
+                                // R formatter
+                                FormatterTabSize = _editorSettings.FormatOptions.TabSize,
+                                FormatterIndentSize = _editorSettings.FormatOptions.IndentSize,
+                                FormatterIndentType = _editorSettings.FormatOptions.IndentType,
+                                FormatterBreakMultipleStatements = _editorSettings.FormatOptions.BreakMultipleStatements,
+                                FormatterBracesOnNewLine = _editorSettings.FormatOptions.BracesOnNewLine,
+                                FormatterSpaceAfterComma = _editorSettings.FormatOptions.SpaceAfterComma,
+                                FormatterSpaceAfterKeyword = _editorSettings.FormatOptions.SpaceAfterKeyword,
+                                FormatterSpaceBeforeCurly = _editorSettings.FormatOptions.SpaceBeforeCurly,
+                                FormatterSpacesAroundEquals = _editorSettings.FormatOptions.SpacesAroundEquals,
+
+                                // R Markdown
+                                MarkdownPreviewEnabled = _markdownSettings.EnablePreview,
+                                MarkdownPreviewRight = _markdownSettings.PreviewPosition == RMarkdownPreviewPosition.Right,
+                                MarkdownPreviewSync = _markdownSettings.AutomaticSync,
+                                MarkdownPreviewScrollPreview = _markdownSettings.ScrollPreviewWithEditor,
+                                MarkdownPreviewScrollEditor = _markdownSettings.ScrollEditorWithPreview,
                             });
                 } catch (Exception ex) {
                     Trace.Fail("Telemetry exception: " + ex.Message);
@@ -183,8 +246,8 @@ namespace Microsoft.VisualStudio.R.Package.Telemetry {
         /// <param name="directory"></param>
         /// <returns></returns>
         private static IEnumerable<string> GetRSubfolders(string directory) {
-            string root = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles));
-            string baseRFolder = Path.Combine(root + @"Program Files\", directory);
+            var root = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles));
+            var baseRFolder = Path.Combine(root + @"Program Files\", directory);
             try {
                 return FolderUtility.GetSubfolderRelativePaths(baseRFolder);
             } catch (IOException) {

@@ -6,7 +6,6 @@ using System;
 namespace Microsoft.R.Host.Client {
     public class BrokerStateChangedEventArgs : EventArgs {
         public bool IsConnected { get; }
-
         public BrokerStateChangedEventArgs(bool isConnected) {
             IsConnected = isConnected;
         }

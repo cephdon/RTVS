@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.R.ExecutionTracing;
 using Microsoft.R.Host.Client;
 using static System.FormattableString;
 
@@ -26,7 +25,7 @@ namespace Microsoft.R.DataInspection {
     /// longer there), the results are undefined. 
     /// </remarks>
     public interface IREvaluationResultInfo {
-        IRSession Session { get; }
+        IRExpressionEvaluator Evaluator { get; }
 
         /// <summary>
         /// R expression designating the environment in which the evaluation that produced this result took place.
@@ -39,14 +38,25 @@ namespace Microsoft.R.DataInspection {
         string Expression { get; }
 
         /// <summary>
-        /// Name of the result. This corresponds to the <c>name</c> parameter of <see cref="RTracer.EvaluateAsync"/>.
+        /// Name of the result. This corresponds to the <c>name</c> parameter of <see cref="RSessionExtensions.TryEvaluateAndDescribeAsync"/>.
         /// </summary>
         /// <remarks>
         /// <para>
         /// This property is filled automatically when the result is produced by <see cref="IRValueInfo.GetChildrenAsync"/>, 
         /// and is primarily useful in that scenario. See the documentation of that method for more information.
         /// </para>
+        /// </remarks>
         string Name { get; }
+
+        /// <summary>
+        /// Creates a copy of this result that can be evaluated in any environment (rather than just the one designated by
+        /// <see cref="EnvironmentExpression"/>) to produce the same value.
+        /// </summary>
+        /// <remarks>
+        /// No evaluation takes place. The new result is identical to the one on which the method was called, except that
+        /// <see cref="EnvironmentExpression"/> is incorporated directly into <see cref="Expression"/>. 
+        /// </remarks>
+        IREvaluationResultInfo ToEnvironmentIndependentResult();
     }
 
     public static class REvaluationResultInfoExtensions {
@@ -61,7 +71,7 @@ namespace Microsoft.R.DataInspection {
             int? maxCount = null,
             CancellationToken cancellationToken = default(CancellationToken)
         ) =>
-            info.Session.DescribeChildrenAsync(info.EnvironmentExpression, info.Expression, properties, repr, maxCount, cancellationToken);
+            info.Evaluator.DescribeChildrenAsync(info.EnvironmentExpression, info.Expression, properties, repr, maxCount, cancellationToken);
 
         /// <summary>
         /// If this evaluation result corresponds to an expression that is a valid assignment target (i.e. valid on the
@@ -75,7 +85,7 @@ namespace Microsoft.R.DataInspection {
             if (string.IsNullOrEmpty(info.Expression)) {
                 throw new InvalidOperationException(Invariant($"{nameof(AssignAsync)} is not supported for this {nameof(REvaluationResultInfo)} because it doesn't have an associated {nameof(info.Expression)}."));
             }
-            return info.Session.ExecuteAsync($"{info.Expression} <- {value}", cancellationToken);
+            return info.Evaluator.ExecuteAsync(Invariant($"{info.Expression} <- {value}"), cancellationToken);
         }
 
         /// <summary>
@@ -89,6 +99,12 @@ namespace Microsoft.R.DataInspection {
         /// </remarks>
         /// <exception cref="RException">Evaluation of the expression produced an error.</exception>
         public static Task<IRValueInfo> GetValueAsync(this IREvaluationResultInfo info, REvaluationResultProperties properties, string repr, CancellationToken cancellationToken = default(CancellationToken)) =>
-            info.Session.EvaluateAndDescribeAsync(info.EnvironmentExpression, info.Expression, info.Name, properties, repr, cancellationToken);
+            info.Evaluator.EvaluateAndDescribeAsync(info.EnvironmentExpression, info.Expression, info.Name, properties, repr, cancellationToken);
+
+        /// <summary>
+        /// Computes the expression that can be used to produce the same value in any environment.
+        /// </summary>
+        public static string GetEnvironmentIndependentExpression(this IREvaluationResultInfo info) =>
+            info.EnvironmentExpression + "$" + info.Expression;
     }
 }

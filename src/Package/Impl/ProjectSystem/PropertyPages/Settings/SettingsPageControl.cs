@@ -12,6 +12,7 @@ using Microsoft.Common.Core;
 using Microsoft.Common.Core.Diagnostics;
 using Microsoft.Common.Core.IO;
 using Microsoft.Common.Core.Shell;
+using Microsoft.Common.Core.UI;
 using Microsoft.R.Components.Application.Configuration;
 using Microsoft.VisualStudio.ProjectSystem;
 using Microsoft.VisualStudio.R.Package.ProjectSystem.Configuration;
@@ -20,7 +21,7 @@ using Microsoft.VisualStudio.R.Package.Shell;
 namespace Microsoft.VisualStudio.R.Package.ProjectSystem.PropertyPages.Settings {
     internal partial class SettingsPageControl : UserControl {
         private readonly IProjectConfigurationSettingsProvider _settingsProvider;
-        private readonly IApplicationShell _appShell;
+        private readonly ICoreShell _shell;
         private readonly IFileSystem _fs;
         private IProjectConfigurationSettingsAccess _access;
         private SettingsPageViewModel _viewModel;
@@ -28,16 +29,16 @@ namespace Microsoft.VisualStudio.R.Package.ProjectSystem.PropertyPages.Settings 
         private bool _isDirty;
 
         public SettingsPageControl() : this(
-            VsAppShell.Current.ExportProvider.GetExportedValue<IProjectConfigurationSettingsProvider>(), 
-            VsAppShell.Current, new FileSystem()) { }
+            VsAppShell.Current.GetService<IProjectConfigurationSettingsProvider>(), 
+            VsAppShell.Current, VsAppShell.Current.FileSystem()) { }
 
-        public SettingsPageControl(IProjectConfigurationSettingsProvider settingsProvider, IApplicationShell appShell, IFileSystem fs) {
+        public SettingsPageControl(IProjectConfigurationSettingsProvider settingsProvider, ICoreShell shell, IFileSystem fs) {
             Check.ArgumentNull(nameof(settingsProvider), settingsProvider);
-            Check.ArgumentNull(nameof(appShell), appShell);
+            Check.ArgumentNull(nameof(shell), shell);
             Check.ArgumentNull(nameof(fs), fs);
 
             _settingsProvider = settingsProvider;
-            _appShell = appShell;
+            _shell = shell;
             _fs = fs;
             InitializeComponent();
         }
@@ -47,7 +48,7 @@ namespace Microsoft.VisualStudio.R.Package.ProjectSystem.PropertyPages.Settings 
                 throw new InvalidOperationException("Project is already set");
             }
             _access = await _settingsProvider.OpenProjectSettingsAccessAsync(project, properties);
-            _viewModel = new SettingsPageViewModel(_access.Settings, _appShell, _fs);
+            _viewModel = new SettingsPageViewModel(_access.Settings, _shell, _fs);
             await _viewModel.SetProjectPathAsync(Path.GetDirectoryName(project.FullPath), properties);
 
             PopulateFilesCombo();
@@ -63,7 +64,7 @@ namespace Microsoft.VisualStudio.R.Package.ProjectSystem.PropertyPages.Settings 
 
         public event EventHandler<EventArgs> DirtyStateChanged;
         public bool IsDirty {
-            get { return _isDirty; }
+            get => _isDirty;
             set {
                 if (_isDirty != value) {
                     _isDirty = value;
@@ -73,7 +74,9 @@ namespace Microsoft.VisualStudio.R.Package.ProjectSystem.PropertyPages.Settings 
         }
 
         public async Task SaveSelectedSettingsFileNameAsync() {
-            await _viewModel?.SaveSelectedSettingsFileNameAsync();
+            if (_viewModel != null) {
+                await _viewModel.SaveSelectedSettingsFileNameAsync();
+            }
             IsDirty = false;
         }
 
@@ -128,7 +131,7 @@ namespace Microsoft.VisualStudio.R.Package.ProjectSystem.PropertyPages.Settings 
                 _selectedIndex = filesList.SelectedIndex = 0;
             } else {
                 filesList.Items.AddRange(files);
-                int index = Array.FindIndex(files, x => x.EqualsIgnoreCase(_viewModel.CurrentFile));
+                var index = Array.FindIndex(files, x => x.EqualsIgnoreCase(_viewModel.CurrentFile));
                 _selectedIndex = filesList.SelectedIndex = index >= 0 ? index : 0;
             }
         }
@@ -142,22 +145,21 @@ namespace Microsoft.VisualStudio.R.Package.ProjectSystem.PropertyPages.Settings 
             UpdatePropertyGrid();
         }
 
-        private void UpdatePropertyGrid() {
-            propertyGrid.SelectedObject = _viewModel.TypeDescriptor;
-        }
+        private void UpdatePropertyGrid() 
+            => propertyGrid.SelectedObject = _viewModel.TypeDescriptor;
 
-        private void SetButtonEnableState() {
-            addSettingButton.Enabled = !string.IsNullOrWhiteSpace(variableName.Text) && !string.IsNullOrWhiteSpace(variableValue.Text);
-        }
+        private void SetButtonEnableState() 
+            => addSettingButton.Enabled = !string.IsNullOrWhiteSpace(variableName.Text) && !string.IsNullOrWhiteSpace(variableValue.Text);
 
         private void OnSelectedFileChanged(object sender, EventArgs e) {
             if (_selectedIndex != filesList.SelectedIndex) {
                 if (IsDirty) {
-                    var answer = _appShell.ShowMessage(Resources.SettingsPage_SavePrompt, MessageButtons.YesNoCancel);
+                    var answer = _shell.ShowMessage(Resources.SettingsPage_SavePrompt, MessageButtons.YesNoCancel);
                     if (answer == MessageButtons.Cancel) {
                         filesList.SelectedIndex = _selectedIndex;
                         return;
-                    } else if (answer == MessageButtons.Yes) {
+                    }
+                    if (answer == MessageButtons.Yes) {
                         _viewModel.SaveAsync().DoNotWait();
                     }
                 }
@@ -194,7 +196,7 @@ namespace Microsoft.VisualStudio.R.Package.ProjectSystem.PropertyPages.Settings 
         }
 
         private void SetFont() {
-            this.Font = _appShell?.GetUiFont() ?? this.Font;
+            Font = _shell?.GetUiFont() ?? Font;
         }
 
         #region Test support

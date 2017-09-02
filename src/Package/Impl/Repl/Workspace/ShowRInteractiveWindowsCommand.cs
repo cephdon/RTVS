@@ -8,13 +8,11 @@ using Microsoft.VisualStudio.R.Packages.R;
 
 namespace Microsoft.VisualStudio.R.Package.Repl.Workspace {
     internal sealed class ShowRInteractiveWindowsCommand : PackageCommand {
-        private readonly IRInteractiveWorkflowProvider _interactiveWorkflowProvider;
-        private readonly IInteractiveWindowComponentContainerFactory _componentContainerFactory;
+        private readonly IRInteractiveWorkflowVisualProvider _interactiveWorkflowProvider;
 
-        public ShowRInteractiveWindowsCommand(IRInteractiveWorkflowProvider interactiveWorkflowProvider, IInteractiveWindowComponentContainerFactory componentContainerFactory) :
+        public ShowRInteractiveWindowsCommand(IRInteractiveWorkflowVisualProvider interactiveWorkflowProvider) :
             base(RGuidList.RCmdSetGuid, RPackageCommandId.icmdShowReplWindow) {
             _interactiveWorkflowProvider = interactiveWorkflowProvider;
-            _componentContainerFactory = componentContainerFactory;
         }
 
         protected override void Handle() {
@@ -26,7 +24,7 @@ namespace Microsoft.VisualStudio.R.Package.Repl.Workspace {
             }
 
             interactiveWorkflow
-                .GetOrCreateVisualComponent(_componentContainerFactory)
+                .GetOrCreateVisualComponentAsync()
                 .ContinueOnRanToCompletion(w => w.Container.Show(focus: true, immediate: false));
         }
     }

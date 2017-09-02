@@ -2,12 +2,14 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.UnitTests.Core.XUnit;
 
 namespace Microsoft.Common.Core.Test.Tasks {
+    [ExcludeFromCodeCoverage]
     public class FailOnTimeoutTest {
         [Test]
         public void FailOnTimeout() {
@@ -22,7 +24,7 @@ namespace Microsoft.Common.Core.Test.Tasks {
                 throw new InvalidOperationException();
             };
 
-            Func<Task> f = () => createTask().FailOnTimeout(200);
+            Func<Task> f = () => createTask().FailOnTimeout(400);
             f.ShouldThrow<InvalidOperationException>();
         }
 
@@ -31,7 +33,7 @@ namespace Microsoft.Common.Core.Test.Tasks {
             var cts = new CancellationTokenSource();
             cts.CancelAfter(100);
 
-            Func<Task> f = () => Task.Delay(300, cts.Token).FailOnTimeout(200);
+            Func<Task> f = () => Task.Delay(700, cts.Token).FailOnTimeout(400);
             f.ShouldThrow<TaskCanceledException>();
         }
 

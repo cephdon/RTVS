@@ -12,8 +12,12 @@ namespace Microsoft.Common.Core.Security {
         public string UserName { get; set; }
         public SecureString Password { get; set; }
 
-        public NetworkCredential GetCredential(Uri uri, string authType) {
-            return new NetworkCredential(UserName, Password);
+        public static Credentials Create(string userName, SecureString password) {
+            var creds = new Credentials { UserName = userName, Password = password };
+            creds.Password.MakeReadOnly();
+            return creds;
         }
+
+        public NetworkCredential GetCredential(Uri uri, string authType) => new NetworkCredential(UserName, Password.ToUnsecureString());
     }
 }

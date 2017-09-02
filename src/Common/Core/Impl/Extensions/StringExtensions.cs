@@ -2,50 +2,62 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace Microsoft.Common.Core {
     public static class StringExtensions {
-        public static bool EqualsOrdinal(this string s, string other) {
-            return string.Equals(s, other, StringComparison.Ordinal);
+        public static bool EqualsOrdinal(this string s, string other) => string.Equals(s, other, StringComparison.Ordinal);
+        public static bool EqualsIgnoreCase(this string s, string other) => string.Equals(s, other, StringComparison.OrdinalIgnoreCase);
+        public static bool StartsWithIgnoreCase(this string s, string prefix) => s.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+        public static bool StartsWithOrdinal(this string s, string prefix) => s.StartsWith(prefix, StringComparison.Ordinal);
+        public static bool EndsWithIgnoreCase(this string s, string suffix) => s.EndsWith(suffix, StringComparison.OrdinalIgnoreCase);
+        public static bool EndsWithOrdinal(this string s, string suffix) => s.EndsWith(suffix, StringComparison.Ordinal);
+        public static bool EndsWith(this string s, char ch) => s.Length > 0 && s[s.Length - 1] == ch;
+        public static int IndexOfIgnoreCase(this string s, string searchFor) => s.IndexOf(searchFor, StringComparison.OrdinalIgnoreCase);
+        public static int IndexOfIgnoreCase(this string s, string searchFor, int startIndex) => s.IndexOf(searchFor, startIndex, StringComparison.OrdinalIgnoreCase);
+        public static int IndexOfOrdinal(this string s, string searchFor) => s.IndexOf(searchFor, StringComparison.Ordinal);
+        public static int LastIndexOfIgnoreCase(this string s, string searchFor) => s.LastIndexOf(searchFor, StringComparison.OrdinalIgnoreCase);
+        public static int LastIndexOfIgnoreCase(this string s, string searchFor, int startIndex) => s.LastIndexOf(searchFor, startIndex, StringComparison.OrdinalIgnoreCase);
+        public static bool ContainsIgnoreCase(this string s, string prefix) => s.IndexOf(prefix, StringComparison.OrdinalIgnoreCase) >= 0;
+
+        public static IEnumerable<int> AllIndexesOfIgnoreCase(this string s, string value, int startIndex = 0, bool allowOverlap = false) {
+            var i = startIndex;
+            while (i < s.Length) {
+                i = s.IndexOf(value, i, StringComparison.OrdinalIgnoreCase);
+                if (i < 0) {
+                    break;
+                }
+
+                yield return i;
+                i = allowOverlap ? i + value.Length : i + 1;
+            }
         }
-        public static bool EqualsIgnoreCase(this string s, string other) {
-            return string.Equals(s, other, StringComparison.OrdinalIgnoreCase);
-        }
-        public static bool StartsWithIgnoreCase(this string s, string prefix) {
-            return s.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
-        }
-        public static bool StartsWithOrdinal(this string s, string prefix) {
-            return s.StartsWith(prefix, StringComparison.Ordinal);
-        }
-        public static bool EndsWithIgnoreCase(this string s, string suffix) {
-            return s.EndsWith(suffix, StringComparison.OrdinalIgnoreCase);
-        }
-        public static bool EndsWithOrdinal(this string s, string suffix) {
-            return s.EndsWith(suffix, StringComparison.Ordinal);
-        }
-        public static bool EndsWith(this string s, char ch) {
-            return s.Length > 0 && s[s.Length-1] == ch;
-        }
-        public static int IndexOfIgnoreCase(this string s, string searchFor) {
-            return s.IndexOf(searchFor, StringComparison.OrdinalIgnoreCase);
-        }
-        public static int IndexOfIgnoreCase(this string s, string searchFor, int startIndex) {
-            return s.IndexOf(searchFor, startIndex, StringComparison.OrdinalIgnoreCase);
-        }
-        public static int IndexOfOrdinal(this string s, string searchFor) {
-            return s.IndexOf(searchFor, StringComparison.Ordinal);
-        }
-        public static int LastIndexOfIgnoreCase(this string s, string searchFor) {
-            return s.LastIndexOf(searchFor, StringComparison.OrdinalIgnoreCase);
-        }
-        public static int LastIndexOfIgnoreCase(this string s, string searchFor, int startIndex) {
-            return s.LastIndexOf(searchFor, startIndex, StringComparison.OrdinalIgnoreCase);
-        }
-        public static bool ContainsIgnoreCase(this string s, string prefix) {
-            return s.IndexOf(prefix, StringComparison.OrdinalIgnoreCase) >= 0;
+
+        public static bool IsStartOfNewLine(this string s, int index, bool ignoreWhitespaces = false) {
+            if (index < 0 || index >= s.Length) {
+                return false;
+            }
+
+            if (s[index].IsLineBreak()) {
+                return false;
+            }
+
+            while (index > 0) {
+                index--;
+                var ch = s[index];
+                if (ch.IsLineBreak()) {
+                    return true;
+                }
+
+                if (!ignoreWhitespaces || !char.IsWhiteSpace(ch)) {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         public static string TrimQuotes(this string s) {
@@ -162,11 +174,38 @@ namespace Microsoft.Common.Core {
             return "\n"; // default
         }
 
-        public static string GetMD5Hash(this string input) {
-            SHA512 sha = SHA512.Create();
-            byte[] inputBytes = Encoding.Unicode.GetBytes(input);
-            byte[] hash = sha.ComputeHash(inputBytes);
+        public static string GetSHA512Hash(this string input) => GetHash(input, SHA512.Create());
+
+        public static string GetSHA256Hash(this string input) => GetHash(input, SHA256.Create());
+
+        private static string GetHash(string input, HashAlgorithm hashAlgorithm) {
+            var inputBytes = Encoding.Unicode.GetBytes(input);
+            var hash = hashAlgorithm.ComputeHash(inputBytes);
             return BitConverter.ToString(hash);
+        }
+
+        public static string GetSHA512FileSystemSafeHash(this string input) => GetFileSystemSafeHash(input, SHA512.Create());
+
+        public static string GetSHA256FileSystemSafeHash(this string input) => GetFileSystemSafeHash(input, SHA256.Create());
+
+        private static string GetFileSystemSafeHash(string input, HashAlgorithm hashAlgorithm) {
+            byte[] inputBytes = Encoding.Unicode.GetBytes(input);
+            byte[] hashBytes = hashAlgorithm.ComputeHash(inputBytes);
+
+            var hashCharsLength = (int)(hashBytes.Length * 4.0d / 3.0d);
+            if (hashCharsLength % 4 != 0) {
+                hashCharsLength += 4 - hashCharsLength % 4;
+            }
+
+            var hashChars = new char[hashCharsLength];
+
+            Convert.ToBase64CharArray(hashBytes, 0, hashBytes.Length, hashChars, 0);
+            return new StringBuilder()
+                .Append(hashChars)
+                .Replace('+', '-')
+                .Replace('/', '.')
+                .Replace('=', '_')
+                .ToString();
         }
 
         public static string FormatInvariant(this string format, object arg) =>
@@ -175,16 +214,16 @@ namespace Microsoft.Common.Core {
         public static string FormatInvariant(this string format, params object[] args) =>
             string.Format(CultureInfo.InvariantCulture, format, args);
 
-        public static long ToLongOrDefault(this string value) {
-            long ret;
-            long.TryParse(value, out ret);
-            return ret;
-        }
+        public static string FormatCurrent(this string format, object arg) =>
+            string.Format(CultureInfo.CurrentCulture, format, arg);
 
-        public static DateTime ToDateTimeOrDefault(this string value) {
-            DateTime ret;
-            DateTime.TryParse(value, out ret);
-            return ret;
-        }
+        public static string FormatCurrent(this string format, params object[] args) =>
+            string.Format(CultureInfo.CurrentCulture, format, args);
+
+        public static long ToLongOrDefault(this string value)
+            => long.TryParse(value, out long ret) ? ret : 0;
+
+        public static DateTime ToDateTimeOrDefault(this string value)
+            => DateTime.TryParse(value, out DateTime ret) ? ret : default(DateTime);
     }
 }

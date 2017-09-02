@@ -1,0 +1,750 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="MicrosoftRHostStopped" xml:space="preserve">
+    <value>R session is stopped. Click "Reset" to start a new one.</value>
+  </data>
+  <data name="MicrosoftRHostStopping" xml:space="preserve">
+    <value>Stopping R session...</value>
+  </data>
+  <data name="MicrosoftRHostStarting" xml:space="preserve">
+    <value>Starting R session...</value>
+  </data>
+  <data name="RestartRHost" xml:space="preserve">
+    <value>Click "Reset" to start a new session.</value>
+  </data>
+  <data name="ReconnectToBroker" xml:space="preserve">
+    <value>Open Workspaces window and either select local R interpreter or try connecting to a remote machine.</value>
+  </data>
+  <data name="InputIsTooLong" xml:space="preserve">
+    <value>Input is too long - no more than {0} characters expected.</value>
+  </data>
+  <data name="Error_ReplUnicodeCoversion" xml:space="preserve">
+    <value>Command line text cannot be converted to default OS code page. Please set locale for non-Unicode programs in Control Panel -&gt; Region -&gt; Administrative to the locale you wish to use.</value>
+  </data>
+  <data name="PackageManager_Available" xml:space="preserve">
+    <value>Available</value>
+  </data>
+  <data name="PackageManager_Installed" xml:space="preserve">
+    <value>Installed</value>
+  </data>
+  <data name="PackageManager_Loaded" xml:space="preserve">
+    <value>Loaded</value>
+  </data>
+  <data name="PackageManager_Title" xml:space="preserve">
+    <value>Package Manager</value>
+  </data>
+  <data name="DoNotShowThisAgain" xml:space="preserve">
+    <value>Do not show this again</value>
+  </data>
+  <data name="PackageManager_LegalDisclaimer" xml:space="preserve">
+    <value>Each package is licensed to you by its owner. Microsoft is not responsible for, nor does it grant any licenses to, third-party packages.</value>
+  </data>
+  <data name="PackageManager_PackageLockedByRSession" xml:space="preserve">
+    <value>Error: Package {0} can't be uninstalled because it has been loaded into R. You need to reset R before package can be uninstalled.</value>
+  </data>
+  <data name="PackageManager_PackageLocked" xml:space="preserve">
+    <value>Error: Package {0} can't be uninstalled because one of its files is locked by other process.</value>
+  </data>
+  <data name="PackageManager_PackageSources" xml:space="preserve">
+    <value>Package sources:</value>
+  </data>
+  <data name="PackageManager_NoLoadedPackagesNoRSession" xml:space="preserve">
+    <value>Warning: Interactive Window is disconnected from R Session, so there is no information about loaded packages.</value>
+  </data>
+  <data name="PackageManager_CantLoadAvailablePackages_NoConnection" xml:space="preserve">
+    <value>Error: Can't get list of available packages because your R session is not running right now. Use the Workspaces window (R Tools | Windows | Workspaces) to start a new R session.</value>
+  </data>
+  <data name="PackageManager_CantLoadInstalledPackages_NoConnection" xml:space="preserve">
+    <value>Error: Can't get list of installed packages because your R session is not running right now. Use the Workspaces window (R Tools | Windows | Workspaces) to start a new R session.</value>
+  </data>
+  <data name="PackageManager_CantLoadLoadedPackages_NoConnection" xml:space="preserve">
+    <value>Error: Can't get list of loaded packages because your R session is not running right now. Use the Workspaces window (R Tools | Windows | Workspaces) to start a new R session.</value>
+  </data>
+  <data name="PackageManager_CantLoadPackageNoRSession" xml:space="preserve">
+    <value>Error: Package {0} can't be loaded because Interactive Window is disconnected from R session.</value>
+  </data>
+  <data name="PackageManager_CantUnloadPackageNoRSession" xml:space="preserve">
+    <value>Error: Package {0} can't be unloaded because Interactive Window is disconnected from R session.</value>
+  </data>
+  <data name="PackageManager_CantInstallPackageNoRSession" xml:space="preserve">
+    <value>Error: Package {0} can't be installed because Interactive Window is disconnected from R session.</value>
+  </data>
+  <data name="PackageManager_CantUninstallPackageNoRSession" xml:space="preserve">
+    <value>Error: Package {0} can't be uninstalled because Interactive Window is disconnected from R session.</value>
+  </data>
+  <data name="PackageManager_CantUpdatePackageNoRSession" xml:space="preserve">
+    <value>Error: Package {0} can't be updated because Interactive Window is disconnected from R session.</value>
+  </data>
+  <data name="PackageManager_SearchIncomplete" xml:space="preserve">
+    <value>Retrieving results from one or more sources</value>
+  </data>
+  <data name="PackageManager_SelectAllPackages" xml:space="preserve">
+    <value>Select all packages</value>
+  </data>
+  <data name="PackageManager_ShowErrors" xml:space="preserve">
+    <value>Show errors in output</value>
+  </data>
+  <data name="Install" xml:space="preserve">
+    <value>Install</value>
+  </data>
+  <data name="Uninstall" xml:space="preserve">
+    <value>Uninstall</value>
+  </data>
+  <data name="Update" xml:space="preserve">
+    <value>Update</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Ok" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Dismiss" xml:space="preserve">
+    <value>Dismiss</value>
+  </data>
+  <data name="DismissAll" xml:space="preserve">
+    <value>Dismiss all</value>
+  </data>
+  <data name="Ready" xml:space="preserve">
+    <value>Ready</value>
+  </data>
+  <data name="Loading" xml:space="preserve">
+    <value>Loading...</value>
+  </data>
+  <data name="LoadingDetails" xml:space="preserve">
+    <value>Loading details...</value>
+  </data>
+  <data name="Package_Title" xml:space="preserve">
+    <value>Title:</value>
+  </data>
+  <data name="Package_Description" xml:space="preserve">
+    <value>Description:</value>
+  </data>
+  <data name="Package_LatestVersion" xml:space="preserve">
+    <value>Latest version:</value>
+  </data>
+  <data name="Package_InstalledVersion" xml:space="preserve">
+    <value>Installed version:</value>
+  </data>
+  <data name="Package_Authors" xml:space="preserve">
+    <value>Authors:</value>
+  </data>
+  <data name="Package_License" xml:space="preserve">
+    <value>License:</value>
+  </data>
+  <data name="Package_Urls" xml:space="preserve">
+    <value>Urls:</value>
+  </data>
+  <data name="Package_LibraryPath" xml:space="preserve">
+    <value>Library:</value>
+  </data>
+  <data name="Package_Repository" xml:space="preserve">
+    <value>Repository:</value>
+  </data>
+  <data name="Package_Built" xml:space="preserve">
+    <value>Built:</value>
+  </data>
+  <data name="Package_Depends" xml:space="preserve">
+    <value>Depends:</value>
+  </data>
+  <data name="Package_Imports" xml:space="preserve">
+    <value>Imports:</value>
+  </data>
+  <data name="Package_Suggests" xml:space="preserve">
+    <value>Suggests:</value>
+  </data>
+  <data name="PackageManager_InstalledVersionToolTip" xml:space="preserve">
+    <value>Installed version: {0}</value>
+  </data>
+  <data name="PackageManager_LatestVersionToolTip" xml:space="preserve">
+    <value>Latest version: {0}</value>
+  </data>
+  <data name="PackageManager_NotAvailableInSource" xml:space="preserve">
+    <value>Not available in this source</value>
+  </data>
+  <data name="PackageManager_PackageInstalledToolTip" xml:space="preserve">
+    <value>Latest stable version is installed</value>
+  </data>
+  <data name="PackageManager_Prerelease" xml:space="preserve">
+    <value>Prerelease</value>
+  </data>
+  <data name="PackageManager_UpdateAvailableToolTip" xml:space="preserve">
+    <value>Update available</value>
+  </data>
+  <data name="PackageManager_LoadButtonToolTip" xml:space="preserve">
+    <value>Load {0}.</value>
+  </data>
+  <data name="PackageManager_UnloadButtonToolTip" xml:space="preserve">
+    <value>Unload {0}.</value>
+  </data>
+  <data name="PackageManager_InstallButtonToolTip" xml:space="preserve">
+    <value>Install {0} version {1}.</value>
+  </data>
+  <data name="PackageManager_UninstallButtonToolTip" xml:space="preserve">
+    <value>Uninstall this package</value>
+  </data>
+  <data name="PackageManager_UpdateButtonToolTip" xml:space="preserve">
+    <value>Update {0} to version {1}</value>
+  </data>
+  <data name="PackageManager_EvalError" xml:space="preserve">
+    <value>Error: {0}</value>
+  </data>
+  <data name="PackageManager_EvalParseError" xml:space="preserve">
+    <value>Error parsing results returned by R host process.</value>
+  </data>
+  <data name="PackageManager_EvalSessionNotAvailable" xml:space="preserve">
+    <value>R host process is not available.</value>
+  </data>
+  <data name="PackageManager_TransportError" xml:space="preserve">
+    <value>Workspace is disconnected or R session is not running.</value>
+  </data>
+  <data name="PackageManager_PackageUninstallWarning" xml:space="preserve">
+    <value>Are you sure you wish to permanently uninstall '{0}' package from library '{1}'? This action cannot be undone.</value>
+  </data>
+  <data name="PackageManager_PackageUpdateWarning" xml:space="preserve">
+    <value>Are you sure you wish to update '{0}' package? This action cannot be undone.</value>
+  </data>
+  <data name="PackageManager_VerticalSplitter" xml:space="preserve">
+    <value>Vertical splitter</value>
+  </data>
+  <data name="ConnectionManager_LocalConnections" xml:space="preserve">
+    <value>Local</value>
+  </data>
+  <data name="ConnectionManager_LocalConnections_Tooltip" xml:space="preserve">
+    <value>Local R installations</value>
+  </data>
+  <data name="ConnectionManager_RemoteConnections" xml:space="preserve">
+    <value>Remote</value>
+  </data>
+  <data name="ConnectionManager_RemoteConnections_Tooltip" xml:space="preserve">
+    <value>Remote R installations</value>
+  </data>
+  <data name="ConnectionManager_ConnectTooltip" xml:space="preserve">
+    <value>Connect to '{0}'</value>
+  </data>
+  <data name="ConnectionManager_EditLocalTooltip_Format" xml:space="preserve">
+    <value>Edit local connection '{0}'</value>
+  </data>
+  <data name="ConnectionManager_EditRemoteTooltip_Format" xml:space="preserve">
+    <value>Edit remote connection '{0}'</value>
+  </data>
+  <data name="ConnectionManager_DeleteTooltip_Format" xml:space="preserve">
+    <value>Delete connection '{0}'</value>
+  </data>
+  <data name="ConnectionManager_Name" xml:space="preserve">
+    <value>Entry name</value>
+  </data>
+  <data name="ConnectionManager_Path" xml:space="preserve">
+    <value>Host URL or path to R installation</value>
+  </data>
+  <data name="ConnectionManager_RCommandLineArguments" xml:space="preserve">
+    <value>R command line arguments</value>
+  </data>
+  <data name="ConnectionManager_Add" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="ConnectionManager_Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="ConnectionManager_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="ConnectionManager_Connect" xml:space="preserve">
+    <value>Connect</value>
+  </data>
+  <data name="ConnectionManager_TestConnection" xml:space="preserve">
+    <value>Test Connection</value>
+  </data>
+  <data name="ConnectionManager_TestingConnection" xml:space="preserve">
+    <value>Testing connection...</value>
+  </data>
+  <data name="ConnectionManager_TestConnectionPassed" xml:space="preserve">
+    <value>Connection test passed!</value>
+  </data>
+  <data name="ConnectionManager_TestConnectionFailed_PathIsInvalid" xml:space="preserve">
+    <value>Connection path is invalid.</value>
+  </data>
+  <data name="ConnectionManager_TestConnectionFailed_RHostIsMissing" xml:space="preserve">
+    <value>Microsoft.R.Host.exe is missing.</value>
+  </data>
+  <data name="ConnectionManager_TestConnectionCanceled" xml:space="preserve">
+    <value>Connection test canceled.</value>
+  </data>
+  <data name="ConnectionManager_TestConnectionFailed_Format" xml:space="preserve">
+    <value>Connection test failed:
+{0}</value>
+  </data>
+  <data name="ConnectionManager_TestConnectionTooltip" xml:space="preserve">
+    <value>Test connection to the R interpreter. Authentication credentials may be required.</value>
+  </data>
+  <data name="ConnectionManager_ShouldHaveName" xml:space="preserve">
+    <value>Connection should have name specified.</value>
+  </data>
+  <data name="ConnectionManager_ShouldHavePath" xml:space="preserve">
+    <value>Connection should have path specified.</value>
+  </data>
+  <data name="ConnectionManager_InvalidName" xml:space="preserve">
+    <value>The provided name is invalid. Allowed characters are letters, digits, underscore, period, dash, single quote, braces and square brackets.</value>
+  </data>
+  <data name="ConnectionManager_InvalidPath" xml:space="preserve">
+    <value>URL or path is not a valid. Please specify full path to the local R or remote machine connection URL in the form '[https://]machine[:port]'</value>
+  </data>
+  <data name="ConnectionManager_EditedConnectionHasChanges" xml:space="preserve">
+    <value>Edited connection has unsaved changes. Do you want to save them?</value>
+  </data>
+  <data name="ConnectionManager_SwitchConfirmation" xml:space="preserve">
+    <value>Are you sure you want to switch from '{0}' to '{1}'? Switching will stop your current session, all unsaved data will be lost.
+
+This prompt can be suppressed in R Tools | Options.</value>
+  </data>
+  <data name="ConnectionManager_RenameActiveConnectionConfirmation" xml:space="preserve">
+    <value>Saving changes will terminate the active session and all unsaved data will be lost.
+
+Do you wish to proceed?</value>
+  </data>
+  <data name="ConnectionManager_RemoveActiveConnectionConfirmation" xml:space="preserve">
+    <value>Are you sure you want to remove the '{0}' connection? 
+    
+Deleting it will terminate the active session and all unsaved data will be lost.
+
+Removing the connection will not delete files you may have created on the remote machine.
+If you want to delete all data on the remote machine you must delete your user profile first.</value>
+  </data>
+  <data name="ConnectionManager_CantSaveWithTheSameName" xml:space="preserve">
+    <value>Can't change connection name to '{0}' because connection with the same name already exists.</value>
+  </data>
+  <data name="ConnectionManager_RemoveConnectionConfirmation" xml:space="preserve">
+    <value>Are you sure you want to remove the '{0}' connection?</value>
+  </data>
+  <data name="Plots_RemoveAllPlotsWarning" xml:space="preserve">
+    <value>Are you sure you want to remove all plots from {0}?</value>
+  </data>
+  <data name="Plots_RemoveCurrentPlotWarning" xml:space="preserve">
+    <value>Are you sure you want to remove the current plot from {0}?</value>
+  </data>
+  <data name="Plots_RemoveSelectedPlotWarning" xml:space="preserve">
+    <value>Are you sure you want to remove the selected plot?</value>
+  </data>
+  <data name="Plots_CopyToClipboardError" xml:space="preserve">
+    <value>Error copying plot to the clipboard.\n{0}</value>
+  </data>
+  <data name="Plots_ExportAsImageFilter" xml:space="preserve">
+    <value>PNG (*.png)|*.png|JPEG (*.jpg;*.jpeg)|*.jpg;*.jpeg|BMP (*.bmp)|*.bmp|TIFF (*.tif;*.tiff)|*.tif;*.tiff|All Files (*.*)|*.*</value>
+  </data>
+  <data name="Plots_ExportAsPdfFilter" xml:space="preserve">
+    <value>PDF (*.pdf)|*.pdf|All Files (*.*)|*.*</value>
+  </data>
+  <data name="Plots_ExportUnsupportedImageFormat" xml:space="preserve">
+    <value>File extension '{0}' is not a supported image file format.</value>
+  </data>
+  <data name="Plots_ExportAsImageDialogTitle" xml:space="preserve">
+    <value>Export Plot As Image</value>
+  </data>
+  <data name="Plots_ExportAsPdfDialogTitle" xml:space="preserve">
+    <value>Export Plot As PDF</value>
+  </data>
+  <data name="Plots_WindowCaptionNoDevice" xml:space="preserve">
+    <value>R Plot</value>
+  </data>
+  <data name="Plots_WindowCaptionDevice" xml:space="preserve">
+    <value>R Plot - {0}</value>
+  </data>
+  <data name="Plots_WindowCaptionDeviceActive" xml:space="preserve">
+    <value>R Plot - {0} - Active</value>
+  </data>
+  <data name="Plots_WindowCaptionLocatorActive" xml:space="preserve">
+    <value>R Plot - {0} - Locator is Active</value>
+  </data>
+  <data name="Plots_StatusLocatorActive" xml:space="preserve">
+    <value>Locator is active. Click in the plot window to select points then choose End Locator.</value>
+  </data>
+  <data name="Plots_EvalError" xml:space="preserve">
+    <value>Error: {0}</value>
+  </data>
+  <data name="Plots_TransportError" xml:space="preserve">
+    <value>Connection to R host process failed.</value>
+  </data>
+  <data name="Plots_DeviceName" xml:space="preserve">
+    <value>Device {0}</value>
+  </data>
+  <data name="Error_InstallTimeout_Format" xml:space="preserve">
+    <value>Timeout installing package {0}.</value>
+  </data>
+  <data name="ConfigurationError_Syntax" xml:space="preserve">
+    <value>Syntax error</value>
+  </data>
+  <data name="Error_SettingFileNoLongerExists" xml:space="preserve">
+    <value>Settings file {0} does not exists.</value>
+  </data>
+  <data name="SettingsFileGeneratedStamp" xml:space="preserve">
+    <value># File content was generated on {0}.</value>
+  </data>
+  <data name="SettingsFileHeader" xml:space="preserve">
+    <value># Application settings file.</value>
+  </data>
+  <data name="Error_ConnectionStringFormat" xml:space="preserve">
+    <value>The connection string appears to be in incorrect format. Would you like to re-create it?</value>
+  </data>
+  <data name="NoLocalR" xml:space="preserve">
+    <value>Visual Studio is unable to find local R installation. Would you like to install Microsoft R Client (recommended)?{0}Click Yes to install latest Microsoft R Client. {1}Click No if you are planning to set up connection to a remote machine.</value>
+  </data>
+  <data name="ConnectionManager_DeleteTooltipDisabled" xml:space="preserve">
+    <value>Entry for the automatically detected local R cannot be deleted. It will be removed when this R version is uninstalled.</value>
+  </data>
+  <data name="ConnectionManager_Connected" xml:space="preserve">
+    <value>Connected</value>
+  </data>
+  <data name="ConnectionManager_Disconnected" xml:space="preserve">
+    <value>Disconnected</value>
+  </data>
+  <data name="ConnectionManager_InformationTooltipFormatLocal" xml:space="preserve">
+    <value>Path: {0}
+Arguments: {1}</value>
+  </data>
+  <data name="ConnectionManager_InformationTooltipFormatRemote" xml:space="preserve">
+    <value>Host: {0}
+Arguments: {1}</value>
+  </data>
+  <data name="ConnectionManager_SwitchConnectionProgressBarMessage" xml:space="preserve">
+    <value>Switching connection "{0}" to "{1}"</value>
+  </data>
+  <data name="ConnectionManager_ConnectionToProgressBarMessage" xml:space="preserve">
+    <value>Connecting to "{0}"</value>
+  </data>
+  <data name="ConnectionManager_ReconnectionToProgressBarMessage" xml:space="preserve">
+    <value>Reconnecting to "{0}"</value>
+  </data>
+  <data name="ConnectionManager_DeleteConnectionProgressBarMessage" xml:space="preserve">
+    <value>Deleting "{0}"</value>
+  </data>
+  <data name="ConnectionManager_RenameConnectionProgressBarMessage" xml:space="preserve">
+    <value>Renaming "{0}" to "{1}"</value>
+  </data>
+  <data name="ConnectionManager_None" xml:space="preserve">
+    <value>none specified</value>
+  </data>
+  <data name="ConnectionManager_ConnectionsAreIdentical" xml:space="preserve">
+    <value>Connection "{0}" has the same parameters as "{1}" and is already connected.</value>
+  </data>
+  <data name="Warning_TerminateR" xml:space="preserve">
+    <value>Terminating R will immediately abort calculations and all workspace objects will be discarded. This action cannot be undone.
+
+Are you sure you want to terminate R session?</value>
+  </data>
+  <data name="ReplWindowName" xml:space="preserve">
+    <value>R Interactive</value>
+  </data>
+  <data name="SecureConnection" xml:space="preserve">
+    <value>Secure</value>
+  </data>
+  <data name="UntrustedConnection" xml:space="preserve">
+    <value>[Warning: UNTRUSTED]</value>
+  </data>
+  <data name="ConnectedUserCount" xml:space="preserve">
+    <value>Connected users: {0}</value>
+  </data>
+  <data name="OperatingSystem" xml:space="preserve">
+    <value>Operating System: {0}</value>
+  </data>
+  <data name="PhysicalMemory" xml:space="preserve">
+    <value>Physical Memory: {0} MB, {1} MB free</value>
+  </data>
+  <data name="ProcessorCount" xml:space="preserve">
+    <value>CPU Count: {0}</value>
+  </data>
+  <data name="RServices_Information" xml:space="preserve">
+    <value>R Services Information:</value>
+  </data>
+  <data name="Version" xml:space="preserve">
+    <value>Version: {0}</value>
+  </data>
+  <data name="VirtualMemory" xml:space="preserve">
+    <value>Virtual Memory: {0} MB, {1} MB free</value>
+  </data>
+  <data name="HostLoad_Tooltip" xml:space="preserve">
+    <value>Machine utilization: {0}% CPU, {1}% Memory, {2}% Network.</value>
+  </data>
+  <data name="VideoCardName" xml:space="preserve">
+    <value>Video controller[{0}]: {1}</value>
+  </data>
+  <data name="VideoProcessor" xml:space="preserve">
+    <value>GPU[{0}]: {1}</value>
+  </data>
+  <data name="VideoRAM" xml:space="preserve">
+    <value>Video memory[{0}]: {1} MB</value>
+  </data>
+  <data name="DeleteProfile_DeletionWarning" xml:space="preserve">
+    <value>WARNING
+
+You are about to delete all of your files on the remote server!
+
+Your user profile and ALL FILES under your user directory will be PERMANENTLY DELETED from {0}. Your connection will also be terminated.
+
+Your local files are not affected.
+
+Reconnecting to the same remote server will create a brand new profile.  
+
+Are you sure you want to delete your user profile and all the associated remote files?</value>
+  </data>
+  <data name="DeleteProfile_Error" xml:space="preserve">
+    <value>Failed to delete user profile, try again few minutes later.
+If it continues to fail, please check the logs for RUserProfileService on the remote machine {0}.</value>
+  </data>
+  <data name="DeleteProfile_Success" xml:space="preserve">
+    <value>User directory and files under it were successfully deleted from remote machine {0}. 
+You can click "Reset" to re-create your user profile and start a new session.</value>
+  </data>
+  <data name="Error_UnableToTransferFile" xml:space="preserve">
+    <value>Unable to transfer file {0}. Exception: {1}.</value>
+  </data>
+  <data name="LocalR" xml:space="preserve">
+    <value>Local R: {0}</value>
+  </data>
+  <data name="RemoteConnection" xml:space="preserve">
+    <value>Remote workspace '{0}' : {1}</value>
+  </data>
+  <data name="Progress_FetchingFile" xml:space="preserve">
+    <value>Fetching file {0}...</value>
+  </data>
+  <data name="InstalledInterpreters" xml:space="preserve">
+    <value>Installed R versions:</value>
+  </data>
+  <data name="SelectInterpreterInstruction" xml:space="preserve">
+    <value>If you want to select specific R version, specify its id 
+number in the connection URL in the form 'https://remote:5444#2'</value>
+  </data>
+  <data name="BrokerDisconnected" xml:space="preserve">
+    <value>Connection to the workspace has been terminated.</value>
+  </data>
+  <data name="Warning_SaveOnReset" xml:space="preserve">
+    <value>Resetting R session will clear the workspace. Would you like to save state?
+
+This prompt can be suppressed in R Tools | Options.
+    </value>
+  </data>
+  <data name="Error_FailedToSaveState" xml:space="preserve">
+    <value>Failed to save state, resetting anyway.</value>
+  </data>
+  <data name="Error_RenderingPlot" xml:space="preserve">
+    <value>Error rendering plot</value>
+  </data>
+  <data name="PlotHistory_EmptyWatermark" xml:space="preserve">
+    <value>Plot history is empty</value>
+  </data>
+  <data name="PlotHistory_AutomationName" xml:space="preserve">
+    <value>Plot</value>
+  </data>
+  <data name="Plot_EmptyWatermark" xml:space="preserve">
+    <value>Run plotting command in R Interactive Window</value>
+  </data>
+  <data name="rtvs_AutosavingWorkspace" xml:space="preserve">
+    <value>Autosaving workspace to image '{0}' ...</value>
+  </data>
+  <data name="rtvs_ConfirmDeleteWorkspace" xml:space="preserve">
+    <value>Delete autosaved workspace image '{0}'?</value>
+  </data>
+  <data name="rtvs_DeletingWorkspace" xml:space="preserve">
+    <value>Deleting autosaved workspace image '{0}'.</value>
+  </data>
+  <data name="rtvs_FailedToLoadWorkspace" xml:space="preserve">
+    <value>Failed to load workspace from autosaved image '{0}'.</value>
+  </data>
+  <data name="rtvs_LoadedWorkspace" xml:space="preserve">
+    <value>Loaded workspace from autosaved image '{0}'.</value>
+  </data>
+  <data name="rtvs_SessionTerminatedUnexpectedly" xml:space="preserve">
+    <value>Previous R session terminated, and its global workspace has been saved to image '{0}'. Would you like to reload it?</value>
+  </data>
+  <data name="rtvs_WorkspaceSavedSuccessfully" xml:space="preserve">
+    <value> workspace saved successfully.</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Package_AccessibleDescription" xml:space="preserve">
+    <value>Package: {0}, State: {1}, {2}, Description: {3}</value>
+  </data>
+  <data name="Package_AccessibleState_Installed" xml:space="preserve">
+    <value>Installed</value>
+  </data>
+  <data name="Package_AccessibleState_Loaded" xml:space="preserve">
+    <value>Loaded</value>
+  </data>
+  <data name="Package_AccessibleState_NotInstalled" xml:space="preserve">
+    <value>Not installed</value>
+  </data>
+  <data name="Package_AccessibleState_NotLoaded" xml:space="preserve">
+    <value>Not loaded</value>
+  </data>
+  <data name="Error_CannotEditExpression" xml:space="preserve">
+    <value>Expression does not evaluate to function.</value>
+  </data>
+  <data name="Error_OdbcDriver" xml:space="preserve">
+    <value>Connection to SQL database in Azure requires SQL ODBC driver 13.1 or higher. Please install the latest Microsoft ODBC Driver from {0}.</value>
+  </data>
+  <data name="Combobox_4x6inches" xml:space="preserve">
+    <value>4 x 6 in.</value>
+  </data>
+  <data name="Combobox_5x7inches" xml:space="preserve">
+    <value>5 x 7 in.</value>
+  </data>
+  <data name="Combobox_6x8inches" xml:space="preserve">
+    <value>6 x 8 in.</value>
+  </data>
+  <data name="Combobox_A4" xml:space="preserve">
+    <value>A4</value>
+  </data>
+  <data name="Combobox_A5" xml:space="preserve">
+    <value>A5</value>
+  </data>
+  <data name="Combobox_A6" xml:space="preserve">
+    <value>A6</value>
+  </data>
+  <data name="Combobox_Custom" xml:space="preserve">
+    <value>Custom</value>
+  </data>
+  <data name="Combobox_DeviceSize" xml:space="preserve">
+    <value>Device Size</value>
+  </data>
+  <data name="Combobox_UsLegal" xml:space="preserve">
+    <value>US Legal</value>
+  </data>
+  <data name="Combobox_UsLetter" xml:space="preserve">
+    <value>US Letter</value>
+  </data>
+  <data name="Combobox_USExecutive" xml:space="preserve">
+    <value>US Executive</value>
+  </data>
+  <data name="Combobox_CairoPdf" xml:space="preserve">
+    <value>Cairo PDF</value>
+  </data>
+  <data name="Combobox_DefaultPdf" xml:space="preserve">
+    <value>Default PDF</value>
+  </data>
+  <data name="Combobox_Landscape" xml:space="preserve">
+    <value>Landscape</value>
+  </data>
+  <data name="Combobox_Portrait" xml:space="preserve">
+    <value>Portrait</value>
+  </data>
+  <data name="Browse" xml:space="preserve">
+    <value>Browse</value>
+  </data>
+</root>

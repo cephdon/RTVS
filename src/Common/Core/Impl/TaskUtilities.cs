@@ -31,16 +31,19 @@ namespace Microsoft.Common.Core {
         public static bool IsOnBackgroundThread() {
             var taskScheduler = TaskScheduler.Current;
             var syncContext = SynchronizationContext.Current;
-            return taskScheduler == TaskScheduler.Default && (syncContext == null || syncContext.GetType() == typeof(SynchronizationContext));
+            return taskScheduler == TaskScheduler.Default
+#if NETSTANDARD1_6
+                && (syncContext == null || syncContext.GetType() == typeof(SynchronizationContext));
+#else
+                && (syncContext == null || syncContext.GetType() == typeof(SynchronizationContext) || Thread.CurrentThread.IsThreadPoolThread);
+#endif
         }
 
         /// <summary>
         /// If awaited on a thread with custom scheduler or synchronization context, invokes the continuation
         /// on a background (thread pool) thread. If already on such a thread, await is a no-op.
         /// </summary>
-        public static BackgroundThreadAwaitable SwitchToBackgroundThread() {
-            return new BackgroundThreadAwaitable();
-        }
+        public static BackgroundThreadAwaitable SwitchToBackgroundThread() => new BackgroundThreadAwaitable();
 
         [Conditional("TRACE")]
         public static void AssertIsOnBackgroundThread(
@@ -49,7 +52,7 @@ namespace Microsoft.Common.Core {
             [CallerLineNumber] int sourceLineNumber = 0
         ) {
             if (!IsOnBackgroundThread()) {
-                Trace.Fail(Invariant($"{memberName} at {sourceFilePath}:{sourceLineNumber} was incorrectly called from a non-background thread."));
+                Debug.Fail(Invariant($"{memberName} at {sourceFilePath}:{sourceLineNumber} was incorrectly called from a non-background thread."));
             }
         }
 
@@ -64,25 +67,39 @@ namespace Microsoft.Common.Core {
             => ct => taskFactory(source, ct);
 
         public static Task WhenAllCancelOnFailure(IEnumerable<Func<CancellationToken, Task>> functions, CancellationToken cancellationToken) {
-            var functionsList = functions.ToList();
-            var cts = new CancellationTokenSource();
-            var tcs = new TaskCompletionSourceEx<bool>();
-            var state = new WhenAllCancelOnFailureContinuationState(functionsList.Count, tcs, cts);
-
-            foreach (var function in functionsList) {
-                var task = function(CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken).Token);
-                task.ContinueWith(WhenAllCancelOnFailureContinuation, state, default(CancellationToken), TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+            var functionsArray = functions.AsArray();
+            if (functionsArray.Length == 0) {
+                return Task.CompletedTask;
             }
-            
+
+            if (functionsArray.Length == 1) {
+                return functionsArray[0](cancellationToken);
+            }
+
+            CancellationTokenSource cts;
+            try {
+                cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            } catch (Exception) when (cancellationToken.IsCancellationRequested) {
+                return Task.FromCanceled(cancellationToken);
+            }
+
+            var tcs = new TaskCompletionSourceEx<bool>();
+            var state = new WhenAllCancelOnFailureContinuationState(functionsArray.Length, tcs, cts);
+            foreach (var function in functionsArray) {
+                Task.Run(() => function(cts.Token)
+                    .ContinueWith(WhenAllCancelOnFailureContinuation, state, default(CancellationToken), TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default));
+            }
+
             return tcs.Task;
         }
 
         private static void WhenAllCancelOnFailureContinuation(Task task, object state) {
             var continuationState = (WhenAllCancelOnFailureContinuationState) state;
+            var isLast = Interlocked.Decrement(ref continuationState.Count) == 0;
             switch (task.Status) {
                 case TaskStatus.RanToCompletion:
-                    if (Interlocked.Decrement(ref continuationState.Count) == 0) {
-                        continuationState.TaskCompletionSource.TrySetResult(true);
+                    if (isLast && continuationState.TaskCompletionSource.TrySetResult(true)) {
+                        continuationState.CancellationTokenSource.Dispose();
                     }
                     break;
                 case TaskStatus.Canceled:

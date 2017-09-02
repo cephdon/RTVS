@@ -2,10 +2,10 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
+using Microsoft.Common.Core;
 using Microsoft.R.Host.Client;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Debugger.Interop;
-using static System.FormattableString;
 
 namespace Microsoft.R.Debugger.PortSupplier {
     partial class RDebugPortSupplier {
@@ -14,7 +14,7 @@ namespace Microsoft.R.Debugger.PortSupplier {
         internal const uint BaseProcessId = 1000000000;
 
         public static uint GetProcessId(int sessionId) {
-            if(sessionId < 0 || sessionId > 1000000000) {
+            if (sessionId < 0 || sessionId > 1000000000) {
                 throw new ArgumentOutOfRangeException(nameof(sessionId));
             }
             return (uint)sessionId + BaseProcessId;
@@ -28,7 +28,7 @@ namespace Microsoft.R.Debugger.PortSupplier {
 
             public uint ProcessId => RDebugPortSupplier.GetProcessId(_sessionId);
 
-            public string Name => Invariant($"R session {_sessionId}");
+            public string Name => Resources.RSessionNameFormat.FormatInvariant(_sessionId);
 
             public DebugProcess(DebugPort port, IRSession session) {
                 _port = port;
@@ -69,12 +69,13 @@ namespace Microsoft.R.Debugger.PortSupplier {
 
             public int GetInfo(enum_PROCESS_INFO_FIELDS Fields, PROCESS_INFO[] pProcessInfo) {
                 // The various string fields should match the strings returned by GetName - keep them in sync when making any changes here.
-                var pi = new PROCESS_INFO();
-                pi.Fields = Fields;
-                pi.bstrFileName = Name;
-                pi.bstrBaseName = Name;
-                pi.bstrTitle = "";
-                pi.ProcessId.dwProcessId = ProcessId;
+                var pi = new PROCESS_INFO {
+                    Fields = Fields,
+                    bstrFileName = Name,
+                    bstrBaseName = Name,
+                    bstrTitle = "",
+                    ProcessId = {dwProcessId = ProcessId}
+                };
                 pProcessInfo[0] = pi;
                 return VSConstants.S_OK;
             }
@@ -100,8 +101,7 @@ namespace Microsoft.R.Debugger.PortSupplier {
             }
 
             public int GetPhysicalProcessId(AD_PROCESS_ID[] pProcessId) {
-                var pidStruct = new AD_PROCESS_ID();
-                pidStruct.dwProcessId = ProcessId;
+                var pidStruct = new AD_PROCESS_ID {dwProcessId = ProcessId};
                 pProcessId[0] = pidStruct;
                 return VSConstants.S_OK;
             }

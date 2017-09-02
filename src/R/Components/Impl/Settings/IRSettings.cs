@@ -1,12 +1,18 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
+using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Threading.Tasks;
+using Microsoft.Common.Core.Enums;
 using Microsoft.Common.Core.Logging;
 using Microsoft.R.Components.ConnectionManager;
 
 namespace Microsoft.R.Components.Settings {
-    public interface IRSettings: INotifyPropertyChanged {
+    public interface IRSettings : INotifyPropertyChanged, IDisposable {
+        YesNo ShowWorkspaceSwitchConfirmationDialog { get; set; }
+        YesNo ShowSaveOnResetConfirmationDialog { get; set; }
         bool AlwaysSaveHistory { get; set; }
         bool ClearFilterOnAddHistory { get; set; }
         bool MultilineHistorySelection { get; set; }
@@ -15,13 +21,13 @@ namespace Microsoft.R.Components.Settings {
         /// Array of saved connections
         /// Sorted by latest usage
         /// </summary>
-        IConnectionInfo[] Connections { get; set; }
+        ConnectionInfo[] Connections { get; set; }
 
         /// <summary>
         /// Latest active connection
         /// May not be in list of  <see cref="Connections"/>
         /// </summary>
-        IConnectionInfo LastActiveConnection { get; set; }
+        ConnectionInfo LastActiveConnection { get; set; }
         
         /// <summary>
         /// Selected CRAN mirror
@@ -56,6 +62,65 @@ namespace Microsoft.R.Components.Settings {
         /// </summary>
         bool EvaluateActiveBindings { get; set; }
 
+        bool ShowDotPrefixedVariables { get; set; }
+
         LogVerbosity LogVerbosity { get; set; }
+
+        void LoadSettings();
+        Task SaveSettingsAsync();
+
+        YesNoAsk LoadRDataOnProjectLoad { get; set; }
+        YesNoAsk SaveRDataOnProjectUnload { get; set; }
+
+        /// <summary>
+        /// Most recently used directories in REPL
+        /// </summary>
+        IEnumerable<string> WorkingDirectoryList { get; set; }
+
+        /// <summary>
+        /// The frequency at which to check for updated news. Default is once per week.
+        /// </summary>
+        SurveyNewsPolicy SurveyNewsCheck { get; set; }
+
+        /// <summary>
+        /// The date/time when the last check for news occurred.
+        /// </summary>
+        DateTime SurveyNewsLastCheck { get; set; }
+
+        string SurveyNewsFeedUrl { get; set; }
+
+        string SurveyNewsIndexUrl { get; set; }
+
+        /// <summary>
+        /// Site to search in 'Search Web for'... commands
+        /// </summary>
+        string WebHelpSearchString { get; set; }
+
+        BrowserType WebHelpSearchBrowserType { get; set; }
+        BrowserType HtmlBrowserType { get; set; }
+        BrowserType MarkdownBrowserType { get; set; }
+
+        /// <summary>
+        /// Controls visibility of R Toolbar
+        /// </summary>
+        bool ShowRToolbar { get; set; }
+
+        /// <summary>
+        /// Controls visibility of the host load meter control
+        /// (CPU/Memory/Network load display).
+        /// </summary>
+        bool ShowHostLoadMeter { get; set; }
+
+        /// <summary>
+        /// Controls evaluation of the expression in the grid viewer.
+        /// </summary>
+        /// <remarks>
+        /// By default View(x) takes snapshot of data as a data frame. This may consume subtantial 
+        /// amount of memory with large data sets. With dynamic evaluation the expression is evaluated
+        /// every time grid refreshes in order to only fetch part of the data for display. However, if 
+        /// the variable changes the data in the grid will also change. This mode may be unsuitable 
+        /// for dplyr pipe expressions.
+        /// </remarks>
+        bool GridDynamicEvaluation { get; set; }
     }
 }

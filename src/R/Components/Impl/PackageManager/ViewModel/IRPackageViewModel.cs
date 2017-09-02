@@ -33,11 +33,13 @@ namespace Microsoft.R.Components.PackageManager.ViewModel {
         bool HasDetails { get; }
         bool IsChecked { get; set; }
         bool IsChanging { get; set; }
+        bool IsRemoteSession { get; }
 
         void AddDetails(RPackage package, bool isInstalled);
         void UpdateAvailablePackageDetails(RPackage package);
         Task InstallAsync();
         Task UninstallAsync();
         Task UpdateAsync();
+        string AccessibleDescription { get; }
     }
 }

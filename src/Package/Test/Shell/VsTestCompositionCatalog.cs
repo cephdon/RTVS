@@ -2,7 +2,6 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System.Diagnostics.CodeAnalysis;
-using Microsoft.Common.Core.Shell;
 using Microsoft.Languages.Editor.Test.Shell;
 
 namespace Microsoft.VisualStudio.R.Package.Test.Shell {
@@ -13,6 +12,7 @@ namespace Microsoft.VisualStudio.R.Package.Test.Shell {
             "Microsoft.VisualStudio.R.Package.dll",
             "Microsoft.VisualStudio.R.Package.Test.dll",
             "Microsoft.VisualStudio.ProjectSystem.FileSystemMirroring.dll",
+            "System.Collections.Immutable.dll"
         };
 
         public static EditorTestCompositionCatalog Current { get; } = new EditorTestCompositionCatalog(_assemblies);

@@ -13,17 +13,14 @@ using Microsoft.Build.Construction;
 using Microsoft.Build.Evaluation;
 using Microsoft.Common.Core;
 using Microsoft.Common.Core.Logging;
-using Microsoft.VisualStudio.ProjectSystem;
 using Microsoft.VisualStudio.ProjectSystem.FileSystemMirroring.IO;
 using Microsoft.VisualStudio.ProjectSystem.FileSystemMirroring.Logging;
 using Microsoft.VisualStudio.ProjectSystem.FileSystemMirroring.MsBuild;
-#if VS14
-using Microsoft.VisualStudio.ProjectSystem.Utilities;
-#endif
+
 
 namespace Microsoft.VisualStudio.ProjectSystem.FileSystemMirroring.Project {
     public class FileSystemMirroringProject : IFileSystemMirroringProjectTemporaryItems {
-        private readonly static XProjDocument EmptyProject;
+        private static readonly XProjDocument EmptyProject;
 
         private readonly UnconfiguredProject _unconfiguredProject;
         private readonly IProjectLockService _projectLockService;
@@ -31,11 +28,11 @@ namespace Microsoft.VisualStudio.ProjectSystem.FileSystemMirroring.Project {
         private readonly IActionLog _log;
         private readonly CancellationToken _unloadCancellationToken;
         private readonly string _projectDirectory;
-        private readonly string _inMemoryImportFullPath;
         private readonly Dictionary<string, ProjectItemElement> _fileItems;
         private readonly Dictionary<string, ProjectItemElement> _directoryItems;
         private readonly IProjectItemDependencyProvider _dependencyProvider;
 
+        private string _inMemoryImportFullPath;
         private ProjectRootElement _inMemoryImport;
         private ProjectItemGroupElement _filesItemGroup;
         private ProjectItemGroupElement _directoriesItemGroup;
@@ -93,6 +90,12 @@ namespace Microsoft.VisualStudio.ProjectSystem.FileSystemMirroring.Project {
                 _directoriesItemGroup = _inMemoryImport.AddItemGroup();
                 _temporaryAddedItemGroup = _inMemoryImport.AddItemGroup();
             }
+        }
+
+        public Task UpdateFullPathAsync(ProjectWriteLockReleaser access, CancellationToken cancellationToken = default(CancellationToken)) {
+            _inMemoryImportFullPath = _unconfiguredProject.GetInMemoryTargetsFileFullPath();
+            _inMemoryImport.FullPath = _inMemoryImportFullPath;
+            return ReevaluateLoadedConfiguredProjects(cancellationToken, access);
         }
 
         public Task<IReadOnlyCollection<string>> AddTemporaryFiles(ConfiguredProject configuredProject, IEnumerable<string> filesToAdd) {
@@ -153,11 +156,7 @@ namespace Microsoft.VisualStudio.ProjectSystem.FileSystemMirroring.Project {
         /// </summary>
         private ProjectRootElement CreateEmptyMsBuildProject(string projectFilePath, ProjectCollection collection) {
             using (XmlReader reader = EmptyProject.CreateReader()) {
-#if VS14
-                ProjectRootElement importFile = ProjectRootElement.Create(reader, collection);
-#else
-                ProjectRootElement importFile = ProjectRootElement.Create(reader, collection, preserveFormatting: false);
-#endif
+                var importFile = ProjectRootElement.Create(reader, collection, preserveFormatting: false);
                 importFile.FullPath = projectFilePath;
                 return importFile;
             }

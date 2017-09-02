@@ -4,7 +4,6 @@
 using System;
 using System.Diagnostics;
 using System.Net;
-using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Common.Core.Disposables;
@@ -25,8 +24,6 @@ namespace Microsoft.R.Host.Client.Host {
             throw new RHostDisconnectedException(message);
         }
 
-        public NetworkCredential GetCredential(Uri uri, string authType) {
-            return LocalCredentials;
-        }
+        public NetworkCredential GetCredential(Uri uri, string authType) => LocalCredentials;
     }
 }

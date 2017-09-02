@@ -4,16 +4,12 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.VisualStudio.InteractiveWindow;
-using Microsoft.VisualStudio.Text;
-using Microsoft.VisualStudio.Text.Editor;
 
 namespace Microsoft.R.Components.InteractiveWorkflow {
     public interface IRInteractiveWorkflowOperations : IDisposable {
-
         void ExecuteExpression(string expression);
-        void ExecuteCurrentExpression(ITextView textView, Action<ITextView, ITextBuffer, int> formatDocument);
 
         /// <summary>
         /// Enqueues the provided code for execution.  If there's no current execution the code is
@@ -31,11 +27,11 @@ namespace Microsoft.R.Components.InteractiveWorkflow {
         void ReplaceCurrentExpression(string replaceWith);
         void PositionCaretAtPrompt();
         void ClearPendingInputs();
-        Task<ExecutionResult> ResetAsync();
-
+        Task ResetAsync();
+        Task CancelAsync();
         void SourceFiles(IEnumerable<string> files, bool echo);
 
-        Task SourceFileAsync(string file, bool echo, Encoding encoding = null);
+        Task SourceFileAsync(string file, bool echo, Encoding encoding = null, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Attempts to launch Shiny app. Invokes 'library(shiny)'

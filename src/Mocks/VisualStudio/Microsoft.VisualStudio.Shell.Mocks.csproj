@@ -21,32 +21,16 @@
     <SccAuxPath>SAK</SccAuxPath>
     <SccProvider>SAK</SccProvider>
   </PropertyGroup>
-  <Import Project="..\..\R.Settings.targets" />
-  <PropertyGroup>
-    <BaseIntermediateOutputPath>$(ObjDirectory)</BaseIntermediateOutputPath>
-    <BaseOutputPath>$(BinDirectory)</BaseOutputPath>
-    <IntermediateOutputPath>$(BaseIntermediateOutputPath)\$(Configuration)\$(AssemblyName)\</IntermediateOutputPath>
-    <OutputPath>$(BaseOutputPath)\$(Configuration)\</OutputPath>
-  </PropertyGroup>
-  <PropertyGroup>
-    <DefineConstants Condition="'$(VisualStudioVersion)'=='14.0'">VS14;$(DefineConstants)</DefineConstants>
-    <DefineConstants Condition="'$(VisualStudioVersion)'=='15.0'">VS15;$(DefineConstants)</DefineConstants>
-    <PreBuildEvent>copy /y "$(MSBuildProjectDirectory)\project.$(VisualStudioVersion).json" "$(MSBuildProjectDirectory)\project.json"</PreBuildEvent>
-  </PropertyGroup>
+  <Import Project="..\..\R.Settings.props" />
   <ItemGroup>
-    <Reference Include="Microsoft.MSXML, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+    <Reference Include="envdte, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
-    <Reference Include="Microsoft.VisualStudio.ComponentModelHost, Version=14.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
-    <Reference Include="Microsoft.VisualStudio.InteractiveWindow">
-      <Private>False</Private>
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>$(LibDirectory)\Microsoft.VisualStudio.InteractiveWindow.dll</HintPath>
+    <Reference Include="envdte80, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
-    <Reference Include="Microsoft.VisualStudio.VsInteractiveWindow">
-      <Private>False</Private>
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>$(LibDirectory)\Microsoft.VisualStudio.VsInteractiveWindow.dll</HintPath>
+    <Reference Include="Microsoft.MSXML, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
@@ -55,19 +39,9 @@
     <Reference Include="System.Drawing" />
     <Reference Include="WindowsBase" />
   </ItemGroup>
-  <Choose>
-    <When Condition="('$(VisualStudioVersion)' == '10.0' or '$(VisualStudioVersion)' == '') and '$(TargetFrameworkVersion)' == 'v3.5'">
-      <ItemGroup>
-        <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
-      </ItemGroup>
-    </When>
-    <Otherwise />
-  </Choose>
+  <ItemGroup />
   <ItemGroup>
-    <Folder Include="Properties\" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\Common\Core\Impl\Microsoft.Common.Core.csproj">
+    <ProjectReference Include="..\..\Common\Core\Impl\Microsoft.R.Common.Core.csproj">
       <Project>{8d408909-459f-4853-a36c-745118f99869}</Project>
       <Name>Microsoft.Common.Core</Name>
     </ProjectReference>
@@ -79,14 +53,25 @@
       <Project>{25cd8690-6208-4740-b123-6dbce6b9444a}</Project>
       <Name>Microsoft.Languages.Core</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\Windows\Core\Impl\Microsoft.R.Common.Core.Windows.csproj">
+      <Project>{01e3d8c2-9c24-492b-b13b-c6d7068b6bf8}</Project>
+      <Name>Microsoft.R.Common.Core.Windows</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Editor\Microsoft.VisualStudio.Editor.Mocks.csproj">
       <Project>{5fcb86d5-4b25-4039-858c-b5a06eb702e1}</Project>
       <Name>Microsoft.VisualStudio.Editor.Mocks</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\..\AssemblyVersionInfo.cs">
+      <Link>Properties\AssemblyVersionInfo.cs</Link>
+    </Compile>
+    <Compile Include="..\..\GlobalAssemblyInfo.cs">
+      <Link>Properties\GlobalAssemblyInfo.cs</Link>
+    </Compile>
     <Compile Include="ComponentModelMock.cs" />
     <Compile Include="ConnectionPointMock.cs" />
+    <Compile Include="DteMock.cs" />
     <Compile Include="EnumWindowFramesMock.cs" />
     <Compile Include="ImageHandleMock.cs" />
     <Compile Include="InteractiveEvaluatorMock.cs" />
@@ -95,8 +80,7 @@
     <Compile Include="MenuCommandServiceMock.cs" />
     <Compile Include="OleComponentManagerMock.cs" />
     <Compile Include="ProjectServiceAccessorMock.cs" />
-    <Compile Include="ProjectServiceMock14.cs" />
-    <Compile Include="ProjectServiceMock15.cs" />
+    <Compile Include="ProjectServiceMock.cs" />
     <Compile Include="Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -104,6 +88,7 @@
     </Compile>
     <Compile Include="TextManagerMock.cs" />
     <Compile Include="ToolWindowPaneMock.cs" />
+    <Compile Include="UIHostLocaleMock.cs" />
     <Compile Include="VsCodeWindowMock.cs" />
     <Compile Include="VSConstants.cs" />
     <Compile Include="VsDebuggerMock.cs" />
@@ -118,6 +103,7 @@
     <Compile Include="VsInteractiveWindowMock.cs" />
     <Compile Include="VsRegisterEditorsMock.cs" />
     <Compile Include="VsSettingsManagerMock.cs" />
+    <Compile Include="VsSettingsPersistenceManagerMock.cs" />
     <Compile Include="VsSettingsStoreMock.cs" />
     <Compile Include="VsTextBufferMock.cs" />
     <Compile Include="VsTextLinesMock.cs" />
@@ -129,24 +115,17 @@
     <Compile Include="VsWindowFrameMock.cs" />
   </ItemGroup>
   <ItemGroup>
-    <FilesToSign Include="$(OutputPath)\$(AssemblyName).dll">
-      <Authenticode>Microsoft</Authenticode>
-      <StrongName>StrongName</StrongName>
-    </FilesToSign>
-  </ItemGroup>
-  <ItemGroup>
     <EmbeddedResource Include="Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <None Include="project.14.0.json" />
-    <None Include="project.15.0.json" />
     <None Include="project.json" />
     <None Include="Resources\rdatanode.png" />
   </ItemGroup>
   <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SourceDirectory)R.Build.Version.targets" />
+  <Import Project="$(SourceDirectory)R.Build.Sign.targets" />
 </Project>

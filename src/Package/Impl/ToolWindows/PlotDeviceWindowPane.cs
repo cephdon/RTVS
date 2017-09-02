@@ -2,14 +2,10 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System;
-using System.ComponentModel.Design;
 using System.Runtime.InteropServices;
-using Microsoft.Common.Core.Shell;
-using Microsoft.R.Components.Controller;
+using Microsoft.Common.Core.Services;
 using Microsoft.R.Components.Plots;
 using Microsoft.R.Components.Plots.Implementation;
-using Microsoft.R.Components.Plots.Implementation.ViewModel;
-using Microsoft.R.Components.Settings;
 using Microsoft.R.Host.Client;
 using Microsoft.VisualStudio.Imaging;
 using Microsoft.VisualStudio.OLE.Interop;
@@ -21,10 +17,7 @@ using Microsoft.VisualStudio.R.Packages.R;
 namespace Microsoft.VisualStudio.R.Package.ToolWindows {
     [Guid(WindowGuidString)]
     internal class PlotDeviceWindowPane : VisualComponentToolWindow<IRPlotDeviceVisualComponent>, IOleCommandTarget {
-        private readonly IRPlotManager _plotManager;
-        private readonly IRSession _session;
-        private readonly IRSettings _settings;
-        private readonly ICoreShell _coreShell;
+        private readonly IRPlotManagerVisual _plotManager;
         private readonly int _instanceId;
         private IOleCommandTarget _commandTarget;
 
@@ -32,40 +25,36 @@ namespace Microsoft.VisualStudio.R.Package.ToolWindows {
 
         public static Guid WindowGuid { get; } = new Guid(WindowGuidString);
 
-        public PlotDeviceWindowPane(IRPlotManager plotManager, IRSession session, int instanceId, IRSettings settings, ICoreShell coreShell) {
+        public PlotDeviceWindowPane(IRPlotManagerVisual plotManager, IRSession session, int instanceId, IServiceContainer services): base(services) {
             _plotManager = plotManager;
-            _session = session;
             _instanceId = instanceId;
-            _settings = settings;
-            _coreShell = coreShell;
 
             // this value matches with icmdShowPlotWindow's Icon in VSCT file
             BitmapImageMoniker = KnownMonikers.LineChart;
             Caption = Resources.PlotWindowCaption;
-            ToolBar = new CommandID(RGuidList.RCmdSetGuid, RPackageCommandId.plotWindowToolBarId);
+            ToolBar = new System.ComponentModel.Design.CommandID(RGuidList.RCmdSetGuid, RPackageCommandId.plotWindowToolBarId);
         }
 
         protected override void OnCreate() {
-            var controller = new AsyncCommandController();
-            var visualComponent  = new RPlotDeviceVisualComponent(_plotManager, controller, _instanceId, this, _coreShell);
-            var commands = new RPlotDeviceCommands(_plotManager.InteractiveWorkflow, visualComponent);
-
-            controller.AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdActivatePlotWindow, commands.ActivatePlotDevice);
-            controller.AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdClearPlots, commands.RemoveAllPlots);
-            controller.AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdRemovePlot, commands.RemoveCurrentPlot);
-            controller.AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdNextPlot, commands.NextPlot);
-            controller.AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdPrevPlot, commands.PreviousPlot);
-            controller.AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdExportPlotAsImage, commands.ExportAsImage);
-            controller.AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdExportPlotAsPdf, commands.ExportAsPdf);
-            controller.AddCommand(VSConstants.GUID_VSStandardCommandSet97, (int)VSConstants.VSStd97CmdID.Copy, commands.Copy);
-            controller.AddCommand(VSConstants.GUID_VSStandardCommandSet97, (int)VSConstants.VSStd97CmdID.Cut, commands.Cut);
-            controller.AddCommand(VSConstants.GUID_VSStandardCommandSet97, (int)VSConstants.VSStd97CmdID.Paste, commands.Paste);
-            controller.AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdCopyPlotAsBitmap, commands.CopyAsBitmap);
-            controller.AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdCopyPlotAsMetafile, commands.CopyAsMetafile);
-            controller.AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdEndLocator, commands.EndLocator);
-            Component = visualComponent;
+            Component = new RPlotDeviceVisualComponent(_plotManager, _instanceId, this, Services);
             _plotManager.RegisterVisualComponent(Component);
-            _commandTarget = new CommandTargetToOleShim(null, Component.Controller);
+
+            var commands = new RPlotDeviceCommands(_plotManager.InteractiveWorkflow, Component);
+            var controller = new AsyncCommandController()
+                .AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdActivatePlotWindow, commands.ActivatePlotDevice)
+                .AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdClearPlots, commands.RemoveAllPlots)
+                .AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdRemovePlot, commands.RemoveCurrentPlot)
+                .AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdNextPlot, commands.NextPlot)
+                .AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdPrevPlot, commands.PreviousPlot)
+                .AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdExportPlotAsImage, commands.ExportAsImage)
+                .AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdExportPlotAsPdf, commands.ExportAsPdf)
+                .AddCommand(VSConstants.GUID_VSStandardCommandSet97, (int)VSConstants.VSStd97CmdID.Copy, commands.Copy)
+                .AddCommand(VSConstants.GUID_VSStandardCommandSet97, (int)VSConstants.VSStd97CmdID.Cut, commands.Cut)
+                .AddCommand(VSConstants.GUID_VSStandardCommandSet97, (int)VSConstants.VSStd97CmdID.Paste, commands.Paste)
+                .AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdCopyPlotAsBitmap, commands.CopyAsBitmap)
+                .AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdCopyPlotAsMetafile, commands.CopyAsMetafile)
+                .AddCommand(RGuidList.RCmdSetGuid, RPackageCommandId.icmdEndLocator, commands.EndLocator);
+            _commandTarget = new CommandTargetToOleShim(null, controller);
             base.OnCreate();
         }
 
@@ -78,12 +67,10 @@ namespace Microsoft.VisualStudio.R.Package.ToolWindows {
             base.Dispose(disposing);
         }
 
-        public int QueryStatus(ref Guid pguidCmdGroup, uint cCmds, OLECMD[] prgCmds, IntPtr pCmdText) {
-            return _commandTarget.QueryStatus(ref pguidCmdGroup, cCmds, prgCmds, pCmdText);
-        }
+        public int QueryStatus(ref Guid pguidCmdGroup, uint cCmds, OLECMD[] prgCmds, IntPtr pCmdText)
+            => _commandTarget.QueryStatus(ref pguidCmdGroup, cCmds, prgCmds, pCmdText);
 
-        public int Exec(ref Guid pguidCmdGroup, uint nCmdId, uint nCmdexecopt, IntPtr pvaIn, IntPtr pvaOut) {
-            return _commandTarget.Exec(ref pguidCmdGroup, nCmdId, nCmdexecopt, pvaIn, pvaOut);
-        }
+        public int Exec(ref Guid pguidCmdGroup, uint nCmdId, uint nCmdexecopt, IntPtr pvaIn, IntPtr pvaOut) 
+            =>_commandTarget.Exec(ref pguidCmdGroup, nCmdId, nCmdexecopt, pvaIn, pvaOut);
     }
 }

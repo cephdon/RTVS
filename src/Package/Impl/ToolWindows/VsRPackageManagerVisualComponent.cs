@@ -2,12 +2,11 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System.ComponentModel.Composition;
+using Microsoft.Common.Core.Shell;
+using Microsoft.R.Components.InfoBar;
 using Microsoft.R.Components.PackageManager;
 using Microsoft.R.Components.Search;
 using Microsoft.R.Components.View;
-using Microsoft.R.Host.Client;
-using Microsoft.R.Support.Settings;
-using Microsoft.VisualStudio.R.Package.Shell;
 using Microsoft.VisualStudio.R.Package.Windows;
 
 namespace Microsoft.VisualStudio.R.Package.ToolWindows {
@@ -16,12 +15,12 @@ namespace Microsoft.VisualStudio.R.Package.ToolWindows {
         private readonly ISearchControlProvider _searchControlProvider;
 
         [ImportingConstructor]
-        public VsRPackageManagerVisualComponentContainerFactory(ISearchControlProvider searchControlProvider) {
+        public VsRPackageManagerVisualComponentContainerFactory(ISearchControlProvider searchControlProvider, ICoreShell coreShell) : base(coreShell.Services) {
             _searchControlProvider = searchControlProvider;
         }
 
-        public IVisualComponentContainer<IRPackageManagerVisualComponent> GetOrCreate(IRPackageManager packageManager, IRSession session, int instanceId = 0) {
-            return GetOrCreate(instanceId, i => new PackageManagerWindowPane(packageManager, session, _searchControlProvider, RToolsSettings.Current, VsAppShell.Current));
+        public IVisualComponentContainer<IRPackageManagerVisualComponent> GetOrCreate(IRPackageManager packageManager, int instanceId = 0) {
+            return GetOrCreate(instanceId, i => new PackageManagerWindowPane(packageManager, _searchControlProvider, Services));
         }
     }
 }

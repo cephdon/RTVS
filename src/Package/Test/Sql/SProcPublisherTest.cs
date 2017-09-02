@@ -2,18 +2,16 @@
 // Licensed under the MIT License. See LICENSE in the project root for license information.
 
 using System.Collections.Generic;
-using System.Data.Odbc;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using FluentAssertions;
 using Microsoft.Common.Core.IO;
-using Microsoft.R.Components.Sql;
+using Microsoft.Common.Core.Shell;
+using Microsoft.Common.Core.Test.Fakes.Shell;
 using Microsoft.R.Components.Sql.Publish;
-using Microsoft.SqlServer.Dac;
 using Microsoft.UnitTests.Core.XUnit;
 using Microsoft.VisualStudio.R.Package.ProjectSystem;
-using Microsoft.VisualStudio.R.Package.Shell;
 using Microsoft.VisualStudio.R.Package.Sql.Publish;
 using Microsoft.VisualStudio.Shell.Interop;
 using NSubstitute;
@@ -23,16 +21,18 @@ namespace Microsoft.VisualStudio.R.Package.Test.Sql {
     [ExcludeFromCodeCoverage]
     [Category.Sql]
     public class SProcPublisherTest {
-        private const string sqlProjectName = "db.sqlproj";
-
         private readonly PackageTestFilesFixture _files;
-        private readonly IApplicationShell _appShell;
+        private readonly TestCoreShell _shell;
         private readonly IProjectSystemServices _pss;
         private readonly IDacPackageServices _dacServices;
 
         public SProcPublisherTest(PackageTestFilesFixture files) {
             _files = files;
-            _appShell = Substitute.For<IApplicationShell>();
+            _shell = TestCoreShell.CreateSubstitute();
+
+            _shell.ServiceManager.RemoveService(_shell.ServiceManager.GetService<IFileSystem>());
+            _shell.ServiceManager.AddService(new WindowsFileSystem());
+
             _pss = Substitute.For<IProjectSystemServices>();
             _dacServices = Substitute.For<IDacPackageServices>();
         }
@@ -41,9 +41,7 @@ namespace Microsoft.VisualStudio.R.Package.Test.Sql {
         [CompositeTest(ThreadType.UI)]
         [InlineData("sqlcode1.r")]
         public void PublishDacpac(string rFile) {
-            var fs = new FileSystem();
-            var settings = new SqlSProcPublishSettings();
-            settings.TargetType = PublishTargetType.Dacpac;
+            var settings = new SqlSProcPublishSettings { TargetType = PublishTargetType.Dacpac };
 
             SetupProjectMocks("project.rproj");
 
@@ -59,8 +57,8 @@ namespace Microsoft.VisualStudio.R.Package.Test.Sql {
 
             _dacServices.GetBuilder().Returns(builder);
 
-            var files = new string[] { Path.Combine(_files.DestinationPath, rFile) };
-            var publisher = new SProcPublisher(_appShell, _pss, fs, _dacServices);
+            var files = new [] { Path.Combine(_files.DestinationPath, rFile) };
+            var publisher = new SProcPublisher(_shell.Services, _pss, _dacServices);
             publisher.Publish(settings, files);
 
             builder.Received(1).Build(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<IEnumerable<string>>());
